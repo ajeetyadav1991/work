@@ -1,0 +1,2383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPN Anomaly Detection - Production v7.0</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-size: 0.95rem; }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 25px; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        .panel { 
+            background-color: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            min-height: 75vh; 
+            height: 100%;
+        }
+        .sortable-header { 
+            cursor: pointer; 
+            user-select: none; 
+            transition: background-color 0.2s; 
+        }
+        .sortable-header:hover { background-color: #e9ecef; }
+        .page-link { cursor: pointer; }
+        .filter-panel { 
+            background-color: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            border-radius: .5rem; 
+            padding: 1rem; 
+        }
+        .multi-select-dropdown { position: relative; }
+        .multi-select-button { 
+            width: 100%; 
+            font-size: .875rem; 
+            text-align: left; 
+            background-color: white; 
+            border: 1px solid #ced4da; 
+            padding: .35rem .75rem; 
+            border-radius: .375rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .multi-select-button:hover { 
+            background-color: #f8f9fa; 
+            border-color: #86b7fe; 
+        }
+        .multi-select-button::after { 
+            content: "▼"; 
+            font-size: 0.7rem; 
+            color: #6c757d; 
+            margin-left: .5rem; 
+        }
+        .multi-select-menu { 
+            display: none; 
+            position: absolute; 
+            width: 100%; 
+            max-height: 280px; 
+            overflow-y: auto; 
+            background-color: white; 
+            border: 1px solid #ced4da; 
+            border-radius: .5rem; 
+            z-index: 1050; 
+            padding: .5rem; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
+            margin-top: 4px; 
+        }
+        .multi-select-menu.show { 
+            display: block; 
+            animation: slideDown 0.2s ease-out; 
+        }
+        @keyframes slideDown { 
+            from { opacity: 0; transform: translateY(-10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .multi-select-option { 
+            padding: .5rem; 
+            cursor: default;
+            border-radius: .375rem; 
+            display: flex; 
+            align-items: center; 
+        }
+        .multi-select-option input[type="checkbox"] { 
+            margin-right: .6rem; 
+            cursor: pointer;
+        }
+        .multi-select-option label {
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+        }
+        .multi-select-option.all-option { 
+            font-weight: 600; 
+            border-bottom: 1px solid #dee2e6; 
+            margin-bottom: .3rem; 
+            padding-bottom: .6rem; 
+        }
+        .form-check {
+            cursor: default;
+        }
+        .form-check-input {
+            cursor: pointer;
+        }
+        .form-check-label {
+            cursor: pointer;
+        }
+        .selected-count { 
+            color: #0d6efd; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+        }
+        .annotated-row { 
+            background-color: #d1e7dd !important; 
+        }
+        .annotated-row td { 
+            color: #0a3622; 
+            font-weight: 500;
+        }
+        .loading-overlay { 
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.7); 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            z-index: 9999; 
+        }
+        .loading-overlay .spinner-border { 
+            width: 3rem; 
+            height: 3rem; 
+        }
+        .loading-overlay p { 
+            color: white; 
+            margin-top: 1rem; 
+            font-size: 1.1rem; 
+        }
+        .toast-container { 
+            position: fixed; 
+            top: 20px; 
+            right: 20px; 
+            z-index: 9998; 
+        }
+        .batch-toolbar { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            border-radius: .5rem; 
+            padding: 1rem; 
+            margin-bottom: 1rem; 
+        }
+        .sr-only { 
+            position: absolute; 
+            width: 1px; 
+            height: 1px; 
+            padding: 0; 
+            margin: -1px; 
+            overflow: hidden; 
+            clip: rect(0,0,0,0); 
+            white-space: nowrap; 
+            border-width: 0; 
+        }
+        .export-buttons .btn { 
+            margin-left: 0.5rem; 
+        }
+        .path-badge {
+            background: #0d6efd;
+            color: white;
+            padding: .25rem .75rem;
+            border-radius: .375rem;
+            font-family: monospace;
+            font-size: .9rem;
+        }
+        .week-badge {
+            background: #198754;
+            color: white;
+            padding: .25rem .5rem;
+            border-radius: .25rem;
+            margin: .15rem;
+            display: inline-block;
+            font-size: .85rem;
+        }
+        .confirmation-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+        }
+        .confirmation-content {
+            background: white;
+            padding: 2rem;
+            border-radius: .75rem;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        }
+        .warning-icon {
+            font-size: 4rem;
+            color: #dc3545;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .visitor-id-link {
+            color: #6f42c1;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .visitor-id-link:hover {
+            color: #59369a;
+            text-decoration: underline;
+        }
+        .info-box {
+            background-color: #e7f3fe;
+            border-left: 5px solid #0d6efd;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 1em;
+            border-radius: 4px;
+        }
+        .comment-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10001;
+            animation: fadeIn 0.2s ease-out;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .comment-content {
+            background: white;
+            padding: 2rem;
+            border-radius: .75rem;
+            width: 100%;
+            max-width: 500px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            transform: scale(0.95);
+            animation: scaleIn 0.2s ease-out forwards;
+        }
+        @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        #week-filter-container .multi-select-menu {
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        #explorer-pane .row.g-4 {
+            display: flex;
+            align-items: stretch;
+            flex-wrap: wrap;
+        }
+
+        /* Performance optimization indicators */
+        .processing-indicator {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(102, 126, 234, 0.9);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            z-index: 9997;
+            display: none;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 0.9; }
+            50% { opacity: 0.6; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p id="loading-message">Processing...</p>
+    </div>
+
+    <div class="processing-indicator" id="processing-indicator">
+        ⚡ Processing filters...
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="header">
+        <h1>🚀 DPN Anomaly Detection</h1>
+        <p class="lead mb-0">Fully Automated Anomaly Investigation & Analysis</p>
+    </div>
+
+    <div class="container-fluid px-4">
+        <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="explorer-tab" data-bs-toggle="tab" data-bs-target="#explorer-pane" type="button" role="tab">
+                    Anomaly Inventory
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="granular-tab" data-bs-toggle="tab" data-bs-target="#granular-pane" type="button" role="tab">
+                    Illustrative Cases
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="session-analysis-tab-btn" data-bs-toggle="tab" data-bs-target="#session-analysis-pane" type="button" role="tab">
+                    Session Analysis
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="log-tab" data-bs-toggle="tab" data-bs-target="#log-pane" type="button" role="tab">
+                    Investigation Log
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="analytics-tab" data-bs-toggle="tab" data-bs-target="#analytics-pane" type="button" role="tab">
+                    Outcome Analytics
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="mainTabContent">
+            <div class="tab-pane fade show active" id="explorer-pane" role="tabpanel">
+                <div class="row g-4">
+                    <div class="col-md-3">
+                        <div class="panel">
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h4 class="mb-0">Path Explorer</h4>
+                                <button class="btn btn-sm btn-outline-primary" id="enter-batch-mode-btn" title="Select multiple records">
+                                    Batch Mode
+                                </button>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label class="form-label fw-bold small">Filter Week Dates</label>
+                                <div id="week-filter-container"></div>
+                            </div>
+                            
+                            <div class="border-top pt-3">
+                                <div class="mb-2">
+                                    <label class="form-label fw-bold small">Search Paths</label>
+                                    <input 
+                                        type="text" 
+                                        class="form-control form-control-sm" 
+                                        id="path-search-input" 
+                                        placeholder="Type to filter paths..." 
+                                        autocomplete="off"
+                                    />
+                                </div>
+                                <p class="small text-muted mb-2">Check paths to view records</p>
+                                <div id="paths-list-container" style="max-height: 60vh; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-9">
+                        <div class="panel">
+                            <div id="batch-toolbar" class="batch-toolbar" style="display: none;">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <span id="batch-count" class="fw-bold fs-5">0 selected</span>
+                                        <button class="btn btn-sm btn-light ms-3" id="batch-select-all">Select All on Page</button>
+                                        <button class="btn btn-sm btn-light ms-1" id="batch-deselect-all">Deselect All</button>
+                                    </div>
+                                    <div>
+                                        <select id="batch-annotation-select" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                                            <option value="">Choose classification...</option>
+                                        </select>
+                                        <button class="btn btn-sm btn-success ms-2" id="batch-apply-btn">Apply to Selected</button>
+                                        <button class="btn btn-sm btn-secondary ms-1" id="exit-batch-mode-btn">Exit Batch Mode</button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="d-flex justify-content-end align-items-start mb-4">
+                                <div class="export-buttons">
+                                    <button class="btn btn-sm btn-outline-danger" id="reset-all-filters-btn" title="Reset grid filters (Journey Type, Team, Device, etc.) - preserves Week and Path selections">
+                                        🔄 Reset Filters
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success" id="export-csv-btn" title="Export currently filtered view to CSV">
+                                        📊 Export CSV
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" id="export-json-btn" title="Export currently filtered view to JSON">
+                                        📄 Export JSON
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="details-container">
+                                <div class="text-center p-5">
+                                    <p class="text-muted">Select one or more paths from the left to begin.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="granular-pane" role="tabpanel">
+                <div class="panel" style="max-height: 80vh; overflow-y: auto;">
+                    <div id="granular-details-content">
+                        <div class="text-center p-5">
+                            <p class="text-muted">Click on any row in the Anomaly Inventory to view illustrative cases.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="session-analysis-pane" role="tabpanel">
+                <div class="panel" style="max-height: 80vh; overflow-y: auto;">
+                    <div id="session-analysis-content">
+                        </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="log-pane" role="tabpanel">
+                <div class="panel">
+                    <h4 class="mb-3">Investigation Log</h4>
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead id="log-table-head"></thead>
+                            <tbody id="log-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="analytics-pane" role="tabpanel">
+                <div class="panel">
+                    <h4 class="mb-3">Outcome Analytics Dashboard</h4>
+                    <div id="analytics-content">
+                        <div class="text-center p-5">
+                            <p class="text-muted">No annotation data available. Please classify some records first.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <script>
+    'use strict';
+
+    // ==================== CONFIGURATION ====================
+    const CONFIG = {
+        ROWS_PER_PAGE: 10,
+        STORAGE_KEY: 'anomaly_grid_annotations_v2',
+        FILTERABLE_COLUMNS: ["Journey Type", "Team", "Business Unit", "Device", "Completed", "Hard Anomaly"],
+        ANNOTATION_CATEGORIES: [
+            "Technical Error",
+            "Previously Anomalies Fixed",
+            "New Tag/Page",
+            "Limited-time-offers (LTO)",
+            "Marketing Change",
+            "Minor Anomalies",
+            "False Positives",
+            "Past Changes",
+            "Unknown Causes",
+            "Missing Tags"
+        ],
+        DISPLAY_COLUMNS: ["Row ID", "Week", "Path", "Journey Type", "Team", "Business Unit", "Device", "Completed", "Hard Anomaly", "Anomaly Type", "Comment"],
+        LOG_DISPLAY_COLUMNS: ["annotation_id", "Row ID", "Week", "Path", "Anomaly Type", "Comment", "Timestamp"],
+        DEBOUNCE_DELAY: 150, // ms - reduced for better responsiveness
+        PROCESSING_INDICATOR_DELAY: 100 // ms - show indicator after this delay
+    };
+
+    // ==================== PERFORMANCE UTILITIES ====================
+    class PerformanceOptimizer {
+        static debounce(func, delay) {
+            let timeoutId;
+            return function(...args) {
+                clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => func.apply(this, args), delay);
+            };
+        }
+
+        static throttle(func, limit) {
+            let inThrottle;
+            return function(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        static async deferExecution(callback, priority = 'background') {
+            return new Promise(resolve => {
+                if ('scheduler' in window && 'postTask' in window.scheduler) {
+                    window.scheduler.postTask(() => {
+                        const result = callback();
+                        resolve(result);
+                    }, { priority });
+                } else {
+                    requestAnimationFrame(() => {
+                        const result = callback();
+                        resolve(result);
+                    });
+                }
+            });
+        }
+
+        static showProcessingIndicator() {
+            const indicator = document.getElementById('processing-indicator');
+            if (indicator) {
+                clearTimeout(indicator._hideTimeout);
+                indicator.style.display = 'block';
+            }
+        }
+
+        static hideProcessingIndicator(delay = 300) {
+            const indicator = document.getElementById('processing-indicator');
+            if (indicator) {
+                clearTimeout(indicator._hideTimeout);
+                indicator._hideTimeout = setTimeout(() => {
+                    indicator.style.display = 'none';
+                }, delay);
+            }
+        }
+
+        static batchDOMUpdates(updates) {
+            return new Promise(resolve => {
+                requestAnimationFrame(() => {
+                    const fragment = document.createDocumentFragment();
+                    updates(fragment);
+                    resolve(fragment);
+                });
+            });
+        }
+    }
+
+    // ==================== MEMOIZATION CACHE ====================
+    class MemoizationCache {
+        constructor(maxSize = 1000) {
+            this.cache = new Map();
+            this.maxSize = maxSize;
+        }
+
+        get(key) {
+            return this.cache.get(key);
+        }
+
+        set(key, value) {
+            if (this.cache.size >= this.maxSize) {
+                const firstKey = this.cache.keys().next().value;
+                this.cache.delete(firstKey);
+            }
+            this.cache.set(key, value);
+        }
+
+        has(key) {
+            return this.cache.has(key);
+        }
+
+        clear() {
+            this.cache.clear();
+        }
+
+        invalidatePattern(pattern) {
+            for (const key of this.cache.keys()) {
+                if (key.includes(pattern)) {
+                    this.cache.delete(key);
+                }
+            }
+        }
+    }
+
+    // ==================== UTILITY FUNCTIONS ====================
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(unsafe);
+        return div.innerHTML;
+    }
+    
+    function sanitizeInput(input) {
+        if (!input) return '';
+        return String(input)
+            .trim()
+            .replace(/[<>]/g, '')
+            .substring(0, 200);
+    }
+    
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c === 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+    
+    function formatTimestamp(date) {
+        const d = new Date(date);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const hours = String(d.getHours()).padStart(2, '0');
+        const minutes = String(d.getMinutes()).padStart(2, '0');
+        const seconds = String(d.getSeconds()).padStart(2, '0');
+        return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // ==================== UI HELPERS ====================
+    class UIHelpers {
+        static showLoading(message = 'Processing...') {
+            const overlay = document.getElementById('loading-overlay');
+            const messageEl = document.getElementById('loading-message');
+            messageEl.textContent = message;
+            overlay.style.display = 'flex';
+            this.announceToScreenReader(message);
+        }
+        
+        static hideLoading() {
+            document.getElementById('loading-overlay').style.display = 'none';
+        }
+        
+        static showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const bgClass = {
+                'success': 'bg-success',
+                'error': 'bg-danger',
+                'warning': 'bg-warning text-dark',
+                'info': 'bg-info'
+            }[type] || 'bg-success';
+            
+            const toast = document.createElement('div');
+            toast.id = toastId;
+            toast.className = `toast align-items-center text-white ${bgClass} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+            toast.setAttribute('aria-atomic', 'true');
+            
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${escapeHtml(message)}</div>
+                    <button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            container.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+            bsToast.show();
+            
+            toast.addEventListener('hidden.bs.toast', () => toast.remove());
+            
+            this.announceToScreenReader(message);
+        }
+        
+        static announceToScreenReader(message) {
+            const announcement = document.createElement('div');
+            announcement.setAttribute('role', 'status');
+            announcement.setAttribute('aria-live', 'polite');
+            announcement.className = 'sr-only';
+            announcement.textContent = message;
+            document.body.appendChild(announcement);
+            setTimeout(() => announcement.remove(), 1000);
+        }
+
+        static async showCommentPrompt() {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'comment-modal';
+                modal.innerHTML = `
+                    <div class="comment-content">
+                        <h4 class="mb-3">Comment (max 200 characters)</h4>
+                        <p class="text-muted small mb-3">You can add additional notes or submit with an empty comment.</p>
+                        <textarea 
+                            class="form-control mb-3" 
+                            id="batch-comment-input" 
+                            rows="3" 
+                            maxlength="200" 
+                            placeholder="Enter iREV value in dollars or other notes..."></textarea>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button class="btn btn-secondary" id="cancel-comment">Cancel</button>
+                            <button class="btn btn-primary" id="submit-comment">Submit</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                const textarea = document.getElementById('batch-comment-input');
+                textarea.focus();
+                
+                document.getElementById('cancel-comment').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(null);
+                });
+                
+                document.getElementById('submit-comment').addEventListener('click', () => {
+                    const comment = sanitizeInput(textarea.value);
+                    modal.remove();
+                    resolve(comment);
+                });
+            });
+        }
+
+        static async showConfirmationDialog(options) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'confirmation-modal';
+                modal.innerHTML = `
+                    <div class="confirmation-content">
+                        <div class="warning-icon">⚠️</div>
+                        <h3 class="text-center text-danger mb-3">WARNING</h3>
+                        <h5 class="text-center mb-4">Are you SURE you want to classify this anomaly?</h5>
+                        
+                        <div class="alert alert-danger mb-4">
+                            <strong>Path:</strong> <span class="path-badge">${escapeHtml(options.path)}</span><br><br>
+                            <strong>Classification:</strong> <span class="badge bg-primary">${escapeHtml(options.classification)}</span><br><br>
+                            <strong>Week Date(s):</strong><br>
+                            ${options.weeks.map(w => `<span class="week-badge">${escapeHtml(w)}</span>`).join('')}<br><br>
+                            <strong>Affected Rows:</strong> ${options.affectedRows}<br><br>
+                            ${options.comment ? `<strong>Comment:</strong> ${escapeHtml(options.comment)}<br><br>` : ''}
+                            <div class="text-center mt-3 fw-bold text-uppercase">
+                                ⚠️ THIS CANNOT BE UNDONE ⚠️
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between gap-3">
+                            <button class="btn btn-secondary btn-lg flex-fill" id="cancel-annotation">
+                                Cancel
+                            </button>
+                            <button class="btn btn-danger btn-lg flex-fill" id="confirm-annotation">
+                                Yes, Submit Annotation
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                document.getElementById('cancel-annotation').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(false);
+                });
+                
+                document.getElementById('confirm-annotation').addEventListener('click', () => {
+                    modal.remove();
+                    resolve(true);
+                });
+            });
+        }
+    }
+
+    // ==================== STORAGE MANAGER ====================
+    class StorageManager {
+        static save(key, data) {
+            try {
+                localStorage.setItem(key, JSON.stringify(data));
+                return true;
+            } catch (e) {
+                if (e.name === 'QuotaExceededError') {
+                    console.error('Storage quota exceeded');
+                    UIHelpers.showToast('Storage quota exceeded. Please export your data.', 'error');
+                }
+                return false;
+            }
+        }
+        
+        static load(key, defaultValue = null) {
+            try {
+                const data = localStorage.getItem(key);
+                return data ? JSON.parse(data) : defaultValue;
+            } catch (e) {
+                console.error('Failed to load from storage:', e);
+                return defaultValue;
+            }
+        }
+    }
+
+    // ==================== DATA EXPORT ====================
+    class DataExporter {
+        static exportToCSV(data, filename) {
+            if (!data || data.length === 0) {
+                UIHelpers.showToast('No data to export', 'warning');
+                return;
+            }
+            
+            const headers = Object.keys(data[0]);
+            const csv = [
+                headers.join(','),
+                ...data.map(row => 
+                    headers.map(h => this.escapeCSV(row[h])).join(',')
+                )
+            ].join('\n');
+            
+            this.downloadFile(csv, filename, 'text/csv');
+            UIHelpers.showToast(`Exported ${data.length} records to CSV`, 'success');
+        }
+        
+        static exportToJSON(data, filename) {
+            if (!data || data.length === 0) {
+                UIHelpers.showToast('No data to export', 'warning');
+                return;
+            }
+            
+            const json = JSON.stringify(data, null, 2);
+            this.downloadFile(json, filename, 'application/json');
+            UIHelpers.showToast(`Exported ${data.length} records to JSON`, 'success');
+        }
+        
+        static escapeCSV(value) {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                return `"${str.replace(/"/g, '""')}"`;
+            }
+            return str;
+        }
+        
+        static downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    // ==================== BATCH OPERATIONS ====================
+    class BatchOperations {
+        constructor() {
+            this.selectedRows = new Set();
+            this.batchMode = false;
+        }
+        
+        enterBatchMode() {
+            this.batchMode = true;
+            this.selectedRows.clear();
+            document.getElementById('batch-toolbar').style.display = 'block';
+            document.getElementById('batch-count').textContent = '0 selected';
+            UIHelpers.announceToScreenReader('Batch mode activated');
+        }
+        
+        exitBatchMode() {
+            this.batchMode = false;
+            this.selectedRows.clear();
+            document.getElementById('batch-toolbar').style.display = 'none';
+            app.updateGridView();
+            UIHelpers.announceToScreenReader('Batch mode deactivated');
+        }
+        
+        toggle(rowId) {
+            if (this.selectedRows.has(rowId)) {
+                this.selectedRows.delete(rowId);
+            } else {
+                this.selectedRows.add(rowId);
+            }
+            this.updateCount();
+        }
+        
+        selectAll(rows) {
+            rows.forEach(row => this.selectedRows.add(row["Row ID"]));
+            this.updateCount();
+            app.updateGridView();
+        }
+        
+        deselectAll() {
+            this.selectedRows.clear();
+            this.updateCount();
+            app.updateGridView();
+        }
+        
+        updateCount() {
+            document.getElementById('batch-count').textContent = `${this.selectedRows.size} selected`;
+        }
+        
+        async applyBatch(annotation, comment) {
+            if (this.selectedRows.size === 0) {
+                UIHelpers.showToast('No records selected', 'warning');
+                return;
+            }
+            
+            const rowsToAnnotate = [];
+            
+            for (const rowId of this.selectedRows) {
+                const row = app.currentDetailRecords.find(r => r["Row ID"] === rowId);
+                if (row && !app.isRowAnnotated(row["Path"], row["Week"], row["Row ID"])) {
+                    rowsToAnnotate.push(row);
+                }
+            }
+            
+            if (rowsToAnnotate.length === 0) {
+                UIHelpers.showToast('All selected rows are already annotated', 'warning');
+                return;
+            }
+            
+            const allWeeks = new Set();
+            const allPaths = new Set();
+            rowsToAnnotate.forEach(row => {
+                allWeeks.add(row["Week"]);
+                allPaths.add(row["Path"]);
+            });
+            
+            const confirmed = await UIHelpers.showConfirmationDialog({
+                path: Array.from(allPaths).join(', '),
+                classification: annotation,
+                comment: comment,
+                weeks: Array.from(allWeeks).sort(),
+                affectedRows: rowsToAnnotate.length
+            });
+            
+            if (!confirmed) {
+                return;
+            }
+            
+            UIHelpers.showLoading(`Processing ${rowsToAnnotate.length} row(s)...`);
+            
+            try {
+                for (const row of rowsToAnnotate) {
+                    await app.saveAnnotation(
+                        row["Path"],
+                        [row["Week"]],
+                        annotation,
+                        comment,
+                        row["Row ID"]
+                    );
+                }
+                
+                this.exitBatchMode();
+                UIHelpers.showToast(`Successfully annotated ${rowsToAnnotate.length} row(s)`, 'success');
+                
+            } catch (error) {
+                console.error('Batch operation failed:', error);
+                UIHelpers.showToast('Batch operation failed', 'error');
+            } finally {
+                UIHelpers.hideLoading();
+            }
+        }
+    }
+
+    // ==================== SAMPLE DATA ====================
+    const SAMPLE_DATA = [
+        { 
+            "Row ID": 'a1', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false",
+            "granular_details": [ { "Visitor Id": "1234567891524_987654321124356A", "Visitor No": 1, "Visitor Page No": [3, 4, 8], "MCV ID": "MCVID_ABC123", "Agent ID": "AG_001", "Correlation ID": "CORR_XYZ789", "URL Referral": "https://www.americanexpress.com/search?q=product", "ContentSquare URL Link": "https://contentsquare.com/session/abc123" }, { "Visitor Id": "1234567891524_987654321124356A", "Visitor No": 2, "Visitor Page No": [1, 5], "MCV ID": "MCVID_ABC123", "Agent ID": "AG_001", "Correlation ID": "CORR_XYZ790", "URL Referral": "https://www.google.com", "ContentSquare URL Link": "https://contentsquare.com/session/abc123" } ]
+        },
+        { "Row ID": 'a2', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Upgraded", "Team": "US", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "granular_details": [ { "Visitor Id": "2345678912635_876543212235467B", "Visitor No": 1, "Visitor Page No": [2, 5], "MCV ID": "MCVID_DEF456", "Agent ID": "AG_003", "Correlation ID": "CORR_ABC001", "URL Referral": "https://www.americanexpress.com/posts/tech", "ContentSquare URL Link": "https://contentsquare.com/session/def456" } ] },
+        { "Row ID": 'a3', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "India", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [ { "Visitor Id": "3456789123746_765432133465788C", "Visitor No": 1, "Visitor Page No": [1, 3], "MCV ID": "MCVID_GHI789", "Agent ID": "AG_004", "Correlation ID": "CORR_ABC002", "URL Referral": "https://www.americanexpress.com/ad/promo", "ContentSquare URL Link": "https://contentsquare.com/session/ghi789" }, { "Visitor Id": "3456789123746_765432133465788C", "Visitor No": 2, "Visitor Page No": [2, 4, 6], "MCV ID": "MCVID_GHI789", "Agent ID": "AG_004", "Correlation ID": "CORR_ABC003", "URL Referral": "https://www.bing.com", "ContentSquare URL Link": "https://contentsquare.com/session/ghi789" }, { "Visitor Id": "3456789123746_765432133465788C", "Visitor No": 3, "Visitor Page No": [1], "MCV ID": "MCVID_GHI789", "Agent ID": "AG_004", "Correlation ID": "CORR_ABC004", "URL Referral": "https://www.amex.com", "ContentSquare URL Link": "https://contentsquare.com/session/ghi789" } ] },
+        { "Row ID": 'a4', "Week": '2024-01-15', "Path": '/home', "Journey Type": null, "Team": "US", "Business Unit": "sbs", "Device": "desktop", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [ { "Visitor Id": "4567891234857_654321445768999D", "Visitor No": 1, "Visitor Page No": [10, 15], "MCV ID": "MCVID_JKL012", "Agent ID": "AG_005", "Correlation ID": "CORR_ABC004", "URL Referral": "https://www.americanexpress.com/r/technology", "ContentSquare URL Link": "https://contentsquare.com/session/jkl012" } ] },
+        { "Row ID": 'a5', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": null, "Completed": "no", "Hard Anomaly": "true", "granular_details": [ { "Visitor Id": "5678912345968_543215566871234E", "Visitor No": 1, "Visitor Page No": [5, 10], "MCV ID": "MCVID_MNO345", "Agent ID": "AG_006", "Correlation ID": "CORR_ABC005", "URL Referral": "https://www.americanexpress.com/ad/story", "ContentSquare URL Link": "https://contentsquare.com/session/mno345" } ] },
+        { "Row ID": 'a6', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [ { "Visitor Id": "6789123456079_432166779823456F", "Visitor No": 1, "Visitor Page No": [1, 2], "MCV ID": "MCVID_PQR678", "Agent ID": "AG_007", "Correlation ID": "CORR_ABC006", "URL Referral": "https://www.americanexpress.com", "ContentSquare URL Link": "https://contentsquare.com/session/pqr678" } ] },
+        { "Row ID": 'b1', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "7891234567180_321778881934567G", "Visitor No": 1, "Visitor Page No": [3, 6], "MCV ID": "MCVID_STU901", "Agent ID": "AG_001", "Correlation ID": "CORR_XYZ801", "URL Referral": "https://www.americanexpress.com/search", "ContentSquare URL Link": "https://contentsquare.com/session/stu901" }] },
+        { "Row ID": 'b2', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00202", "Visitor No": 1, "Visitor Page No": [2, 8], "MCV ID": "MCVID_VWX234", "Agent ID": "AG_002", "Correlation ID": "CORR_ABC101", "URL Referral": "https://www.americanexpress.com/posts/article", "ContentSquare URL Link": "https://contentsquare.com/session/vwx234" }] },
+        { "Row ID": 'b3', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "V00203", "Visitor No": 1, "Visitor Page No": [1, 4], "MCV ID": "MCVID_YZA567", "Agent ID": "AG_003", "Correlation ID": "CORR_ABC102", "URL Referral": "https://www.americanexpress.com/campaign", "ContentSquare URL Link": "https://contentsquare.com/session/yza567" }] },
+        { "Row ID": 'b4', "Week": '2024-01-22', "Path": '/products', "Journey Type": null, "Team": "India", "Business Unit": "sbs", "Device": "desktop", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00204", "Visitor No": 1, "Visitor Page No": [5, 12], "MCV ID": "MCVID_BCD890", "Agent ID": "AG_004", "Correlation ID": "CORR_ABC103", "URL Referral": "https://www.americanexpress.com/tech/news", "ContentSquare URL Link": "https://contentsquare.com/session/bcd890" }] },
+        { "Row ID": 'b5', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Upgraded", "Team": "US", "Business Unit": "PL", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "V00205", "Visitor No": 1, "Visitor Page No": [3, 7], "MCV ID": "MCVID_EFG123", "Agent ID": "AG_005", "Correlation ID": "CORR_ABC104", "URL Referral": "https://www.americanexpress.com/promo/deals", "ContentSquare URL Link": "https://contentsquare.com/session/efg123" }] },
+        { "Row ID": 'b6', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Basic", "Team": "India", "Business Unit": "Consumer", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00206", "Visitor No": 1, "Visitor Page No": [2, 6], "MCV ID": "MCVID_HIJ456", "Agent ID": "AG_006", "Correlation ID": "CORR_ABC105", "URL Referral": "https://www.americanexpress.com/ad/banner", "ContentSquare URL Link": "https://contentsquare.com/session/hij456" }] },
+        { "Row ID": 'c1', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "8912345678291_218899923045678H", "Visitor No": 1, "Visitor Page No": [4, 9], "MCV ID": "MCVID_KLM789", "Agent ID": "AG_001", "Correlation ID": "CORR_XYZ901", "URL Referral": "https://www.americanexpress.com/search/checkout", "ContentSquare URL Link": "https://contentsquare.com/session/klm789" }] },
+        { "Row ID": 'c2', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00302", "Visitor No": 1, "Visitor Page No": [1, 5], "MCV ID": "MCVID_NOP012", "Agent ID": "AG_002", "Correlation ID": "CORR_ABC201", "URL Referral": "https://www.americanexpress.com/posts/payment", "ContentSquare URL Link": "https://contentsquare.com/session/nop012" }] },
+        { "Row ID": 'c3', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "V00303", "Visitor No": 1, "Visitor Page No": [2, 7], "MCV ID": "MCVID_QRS345", "Agent ID": "AG_003", "Correlation ID": "CORR_ABC202", "URL Referral": "https://www.americanexpress.com/shop/cart", "ContentSquare URL Link": "https://contentsquare.com/session/qrs345" }] },
+        { "Row ID": 'c4', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": null, "Team": "India", "Business Unit": "sbs", "Device": "desktop", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00304", "Visitor No": 1, "Visitor Page No": [6, 11], "MCV ID": "MCVID_TUV678", "Agent ID": "AG_004", "Correlation ID": "CORR_ABC203", "URL Referral": "https://www.americanexpress.com/payment/secure", "ContentSquare URL Link": "https://contentsquare.com/session/tuv678" }] },
+        { "Row ID": 'c5', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Upgraded", "Team": "US", "Business Unit": "PL", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "V00305", "Visitor No": 1, "Visitor Page No": [3, 8], "MCV ID": "MCVID_WXY901", "Agent ID": "AG_005", "Correlation ID": "CORR_ABC204", "URL Referral": "https://www.americanexpress.com/offer/sale", "ContentSquare URL Link": "https://contentsquare.com/session/wxy901" }] },
+        { "Row ID": 'c6', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Basic", "Team": "India", "Business Unit": "Consumer", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "V00306", "Visitor No": 1, "Visitor Page No": [1, 4], "MCV ID": "MCVID_ZAB234", "Agent ID": "AG_006", "Correlation ID": "CORR_ABC205", "URL Referral": "https://www.americanexpress.com/checkout/final", "ContentSquare URL Link": "https://contentsquare.com/session/zab234" }] },
+        { "Row ID": 'd1', "Week": '2024-01-15', "Path": '/global-offers', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "9988776655443_112233445566778A", "Visitor No": 1, "Visitor Page No": [1, 2], "MCV ID": "MCVID_GLO441", "Agent ID": "AG_010", "Correlation ID": "CORR_GLO401", "URL Referral": "https://www.americanexpress.com/global", "ContentSquare URL Link": "https://contentsquare.com/session/glo441" }] },
+        { "Row ID": 'd2', "Week": '2024-01-22', "Path": '/global-offers', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": "desktop", "Completed": "no", "Hard Anomaly": "true", "granular_details": [{ "Visitor Id": "9988776655443_223344556677889B", "Visitor No": 1, "Visitor Page No": [3, 5], "MCV ID": "MCVID_GLO442", "Agent ID": "AG_011", "Correlation ID": "CORR_GLO402", "URL Referral": "https://www.americanexpress.com/global", "ContentSquare URL Link": "https://contentsquare.com/session/glo442" }] },
+        { "Row ID": 'd3', "Week": '2024-01-29', "Path": '/global-offers', "Journey Type": "Basic", "Team": "US", "Business Unit": "sbs", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "granular_details": [{ "Visitor Id": "9988776655443_334455667788990C", "Visitor No": 1, "Visitor Page No": [4, 8], "MCV ID": "MCVID_GLO443", "Agent ID": "AG_012", "Correlation ID": "CORR_GLO403", "URL Referral": "https://www.americanexpress.com/global", "ContentSquare URL Link": "https://contentsquare.com/session/glo443" }] }
+    ];
+
+    const MOCK_SESSION_DATA = {};
+
+    // ==================== MAIN APPLICATION ====================
+    class AnomalyGridApp {
+        constructor() {
+            this.appData = SAMPLE_DATA;
+            this.annotationLog = [];
+            this.currentDetailRecords = [];
+            this.selectedRowForAnnotation = null;
+            this.selectedPaths = new Set();
+            this.selectedWeeks = new Set();
+            this.allWeeks = [];
+            
+            this.gridState = {
+                filters: {},
+                sortColumn: 'Row ID',
+                sortDirection: 'asc',
+                currentPage: 1
+            };
+            
+            this.batchOps = new BatchOperations();
+            this.chartInstances = {};
+            
+            // Performance optimizations
+            this.annotationCache = new MemoizationCache(500);
+            this.filterCache = new MemoizationCache(100);
+            this.isProcessing = false;
+            this.updateInProgress = false; // Prevent re-entry
+            this.pathSearchQuery = ''; // Persist path search
+            
+            // Create debounced versions of expensive operations
+            this.debouncedUpdatePathExplorer = PerformanceOptimizer.debounce(
+                () => this._updatePathExplorerImmediate(),
+                CONFIG.DEBOUNCE_DELAY
+            );
+            
+            this.debouncedUpdateGridView = PerformanceOptimizer.debounce(
+                () => this._updateGridViewImmediate(),
+                CONFIG.DEBOUNCE_DELAY
+            );
+            
+            this.init();
+        }
+        
+        init() {
+            try {
+                this.allWeeks = [...new Set(this.appData.map(d => d["Week"]))].sort();
+                this.selectedWeeks = new Set(this.allWeeks);
+                
+                this.renderWeekFilter();
+                this.updatePathExplorer();
+                this.updateLogView();
+                this.populateBatchAnnotationDropdown();
+                
+                this.setupEventListeners();
+                
+                UIHelpers.showToast('Application loaded successfully', 'success');
+            } catch (error) {
+                console.error('Initialization failed:', error);
+                UIHelpers.showToast('Failed to initialize application', 'error');
+            }
+        }
+        
+        setupEventListeners() {
+            // Path search input with instant filtering
+            document.addEventListener('input', (e) => {
+                if (e.target.id === 'path-search-input') {
+                    this.pathSearchQuery = e.target.value;
+                    this.filterPathList();
+                }
+            });
+            
+            // Week filter with debouncing
+            let weekFilterTimeout = null;
+            document.getElementById('week-filter-container').addEventListener('change', (e) => {
+                if (e.target.classList.contains('week-filter-checkbox')) {
+                    // Clear any pending updates
+                    clearTimeout(weekFilterTimeout);
+                    
+                    // Update state immediately
+                    this.handleWeekFilterChangeImmediate(e.target);
+                    
+                    // Debounce the expensive operation
+                    weekFilterTimeout = setTimeout(() => {
+                        this.updatePathExplorer();
+                    }, CONFIG.DEBOUNCE_DELAY);
+                }
+            });
+            
+            // Path selection with debouncing
+            let pathFilterTimeout = null;
+            document.getElementById('paths-list-container').addEventListener('change', (e) => {
+                if (e.target.id === 'path-select-all' || e.target.classList.contains('path-checkbox')) {
+                    // Clear any pending updates
+                    clearTimeout(pathFilterTimeout);
+                    
+                    // Update state immediately
+                    this.handlePathSelectionImmediate(e.target);
+                    
+                    // Debounce the expensive operation
+                    pathFilterTimeout = setTimeout(() => {
+                        this.loadDetailsForSelectedPaths();
+                    }, CONFIG.DEBOUNCE_DELAY);
+                }
+            });
+            
+            // Multi-select dropdown handling - simplified
+            document.addEventListener('click', (e) => {
+                const button = e.target.closest('.multi-select-button');
+                if (button) {
+                    e.stopPropagation();
+                    const menu = button.nextElementSibling;
+                    const isOpen = menu.classList.contains('show');
+                    document.querySelectorAll('.multi-select-menu').forEach(m => m.classList.remove('show'));
+                    if (!isOpen) menu.classList.add('show');
+                    return;
+                }
+                
+                // Close dropdowns when clicking outside
+                if (!e.target.closest('.multi-select-dropdown')) {
+                    document.querySelectorAll('.multi-select-menu').forEach(menu => menu.classList.remove('show'));
+                }
+            });
+            
+            const detailsContainer = document.getElementById('details-container');
+
+            // Filter changes with debouncing
+            let gridFilterTimeout = null;
+            detailsContainer.addEventListener('change', (e) => {
+                if (e.target.classList.contains('multi-select-checkbox')) {
+                    // Clear any pending updates
+                    clearTimeout(gridFilterTimeout);
+                    
+                    // Update state immediately
+                    this.handleFilterChangeImmediate(e.target);
+                    
+                    // Debounce the expensive operation
+                    gridFilterTimeout = setTimeout(() => {
+                        this.gridState.currentPage = 1;
+                        this._updateGridViewImmediate();
+                    }, CONFIG.DEBOUNCE_DELAY);
+                }
+            });
+            
+            // Click handlers with delegation
+            detailsContainer.addEventListener('click', (e) => {
+                // Removed the multi-select-option click handler that was causing issues
+                
+                if (e.target.classList.contains('page-link') && !e.target.parentElement.classList.contains('disabled')) {
+                    this.gridState.currentPage = parseInt(e.target.dataset.page);
+                    this.updateGridView();
+                } else if (e.target.classList.contains('sortable-header')) {
+                    this.handleSort(e.target.dataset.column);
+                } else if (e.target.closest('tr')?.closest('tbody')?.id === 'details-table-body') {
+                    this.handleRowClick(e.target.closest('tr'), e);
+                } else if (e.target.id === 'submit-annotation-btn') {
+                    this.handleAnnotation();
+                } else if (e.target.classList.contains('batch-checkbox')) {
+                    this.batchOps.toggle(e.target.dataset.rowId);
+                    this.updateGridView();
+                }
+            });
+            
+            detailsContainer.addEventListener('change', (e) => {
+                if (e.target.id === 'annotation-dropdown') {
+                    document.getElementById('submit-annotation-btn').disabled = !e.target.value;
+                }
+            });
+            
+            // Export buttons
+            document.getElementById('export-csv-btn').addEventListener('click', () => {
+                const filteredRecords = this.filterData(this.currentDetailRecords);
+                const exportData = filteredRecords.map(rec => {
+                    const { granular_details, ...rest } = rec;
+                    const annotation = this.findAnnotation(rec["Path"], rec["Week"], rec["Row ID"]);
+                    return {
+                        ...rest,
+                        "Anomaly Type": annotation ? annotation.classification : "N/A",
+                        "Comment": annotation ? annotation.comment : "N/A"
+                    };
+                });
+                DataExporter.exportToCSV(exportData, `filtered_view_${new Date().toISOString().split('T')[0]}.csv`);
+            });
+            
+            document.getElementById('export-json-btn').addEventListener('click', () => { 
+                const filteredRecords = this.filterData(this.currentDetailRecords);
+                const exportData = filteredRecords.map(rec => {
+                    const { granular_details, ...rest } = rec;
+                     const annotation = this.findAnnotation(rec["Path"], rec["Week"], rec["Row ID"]);
+                    return {
+                        ...rest,
+                        "Anomaly Type": annotation ? annotation.classification : "N/A",
+                        "Comment": annotation ? annotation.comment : "N/A"
+                    };
+                });
+                DataExporter.exportToJSON(exportData, `filtered_view_${new Date().toISOString().split('T')[0]}.json`); 
+            });
+
+            // Reset All Filters button
+            document.getElementById('reset-all-filters-btn').addEventListener('click', () => {
+                this.resetAllFilters();
+            });
+
+            // Batch mode buttons
+            document.getElementById('enter-batch-mode-btn').addEventListener('click', () => { this.batchOps.enterBatchMode(); this.updateGridView(); });
+            document.getElementById('exit-batch-mode-btn').addEventListener('click', () => { this.batchOps.exitBatchMode(); });
+            document.getElementById('batch-select-all').addEventListener('click', () => { this.batchOps.selectAll(this.getCurrentPageRecords()); });
+            document.getElementById('batch-deselect-all').addEventListener('click', () => { this.batchOps.deselectAll(); });
+            
+            document.getElementById('batch-apply-btn').addEventListener('click', async () => {
+                const annotation = document.getElementById('batch-annotation-select').value;
+                if (!annotation) {
+                    UIHelpers.showToast('Please select a classification', 'warning');
+                    return;
+                }
+                
+                const comment = await UIHelpers.showCommentPrompt();
+                
+                if (comment !== null) {
+                    await this.batchOps.applyBatch(annotation, comment);
+                }
+            });
+            
+            document.getElementById('analytics-tab').addEventListener('shown.bs.tab', () => { this.renderAnalytics(); });
+            document.getElementById('granular-details-content').addEventListener('click', (e) => { const link = e.target.closest('.visitor-id-link'); if (link && link.dataset.visitorId) { this.renderSessionAnalysis(link.dataset.visitorId); } });
+        }
+        
+        // ==================== PATH SEARCH FUNCTIONALITY ====================
+        
+        filterPathList() {
+            const searchQuery = this.pathSearchQuery.toLowerCase().trim();
+            const container = document.getElementById('paths-list-container');
+            
+            // Get current path data
+            const filteredData = this.appData.filter(row => this.selectedWeeks.has(row["Week"]));
+            const pathCounts = filteredData.reduce((acc, row) => {
+                acc[row["Path"]] = (acc[row["Path"]] || 0) + 1;
+                return acc;
+            }, {});
+            
+            // Filter paths based on search query
+            let matchingPaths = Object.entries(pathCounts);
+            
+            if (searchQuery) {
+                matchingPaths = matchingPaths.filter(([path]) => 
+                    path.toLowerCase().includes(searchQuery)
+                );
+            }
+            
+            // Sort matching paths
+            matchingPaths.sort((a, b) => a[0].localeCompare(b[0]));
+            
+            // Handle zero results
+            if (matchingPaths.length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>No paths found</strong><br>
+                        No paths match "${escapeHtml(this.pathSearchQuery)}"
+                    </div>
+                `;
+                return;
+            }
+            
+            // Check if all matching paths are selected
+            const allMatchingSelected = matchingPaths.every(([path]) => this.selectedPaths.has(path));
+            
+            // Render filtered list
+            let html = `
+                <div class="form-check fw-bold border-bottom pb-2 mb-2">
+                    <input class="form-check-input" type="checkbox" id="path-select-all" ${allMatchingSelected ? 'checked' : ''}>
+                    <label class="form-check-label" for="path-select-all">
+                        Select All ${searchQuery ? `(${matchingPaths.length} matching)` : ''}
+                    </label>
+                </div>
+            `;
+            
+            matchingPaths.forEach(([path, count]) => {
+                const pathId = `path-${path.replace(/[^a-zA-Z0-9]/g, '')}`;
+                const isChecked = this.selectedPaths.has(path) ? 'checked' : '';
+                html += `
+                    <div class="form-check">
+                        <input class="form-check-input path-checkbox" type="checkbox" value="${escapeHtml(path)}" id="${pathId}" ${isChecked}>
+                        <label class="form-check-label" for="${pathId}">
+                            ${escapeHtml(path)} <span class="text-muted">(${count})</span>
+                        </label>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        // ==================== RESET ALL FILTERS ====================
+        
+        resetAllFilters() {
+            // DO NOT reset week filters - keep user's week selection
+            // DO NOT reset path search - keep user's search query
+            // DO NOT reset path selection - keep user's selected paths
+            
+            // ONLY reset grid filters (Journey Type, Team, Business Unit, Device, Completed, Hard Anomaly)
+            if (this.currentDetailRecords.length === 0) {
+                UIHelpers.showToast('Please select at least one path first', 'warning');
+                return;
+            }
+            
+            // Reset grid filters to "All"
+            const enrichedData = this.currentDetailRecords.map(row => {
+                const annotation = this.findAnnotation(row["Path"], row["Week"], row["Row ID"]);
+                return {
+                    ...row,
+                    "Anomaly Type": annotation ? annotation.classification : null,
+                    "Comment": annotation ? annotation.comment : null
+                };
+            });
+            
+            // Rebuild filter options
+            const filterOptions = {};
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                const values = [...new Set(enrichedData.map(row => row[col]))].sort();
+                filterOptions[col] = values;
+            });
+            
+            // Reset grid state filters
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                this.gridState.filters[col] = new Set(filterOptions[col].map(v => String(v)));
+                
+                // Update checkboxes in UI
+                const allCheckbox = document.querySelector(`.multi-select-checkbox[data-column="${col}"][value="__ALL__"]`);
+                if (allCheckbox) allCheckbox.checked = true;
+                
+                document.querySelectorAll(`.multi-select-checkbox[data-column="${col}"]:not([value="__ALL__"])`).forEach(cb => {
+                    cb.checked = true;
+                });
+                
+                // Update button display
+                this.updateMultiSelectDisplay(col);
+            });
+            
+            // Reset sorting to default
+            this.gridState.sortColumn = 'Row ID';
+            this.gridState.sortDirection = 'asc';
+            
+            // Reset to page 1
+            this.gridState.currentPage = 1;
+            
+            // Update grid view
+            this.updateGridView();
+            
+            // Show toast notification
+            UIHelpers.showToast('Grid filters cleared - Week and Path selections preserved', 'success');
+            
+            // Announce to screen readers
+            UIHelpers.announceToScreenReader('Grid filters have been reset');
+        }
+        
+        // ==================== OPTIMIZED FILTER HANDLING ====================
+        
+        handleWeekFilterChangeImmediate(checkbox) {
+            // Immediate synchronous UI update - NO debouncing here
+            const value = checkbox.value;
+            
+            if (value === '__ALL__') {
+                const allCheckboxes = document.querySelectorAll('.week-filter-checkbox:not([value="__ALL__"])');
+                if (checkbox.checked) {
+                    this.selectedWeeks.clear();
+                    allCheckboxes.forEach(cb => {
+                        cb.checked = true;
+                        this.selectedWeeks.add(cb.value);
+                    });
+                } else {
+                    allCheckboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    this.selectedWeeks.clear();
+                }
+            } else {
+                if (checkbox.checked) {
+                    this.selectedWeeks.add(value);
+                } else {
+                    this.selectedWeeks.delete(value);
+                }
+                
+                // Update "Select All" checkbox state
+                const allCheckbox = document.getElementById('all-weeks');
+                if (allCheckbox) {
+                    const allOtherCheckboxes = document.querySelectorAll('.week-filter-checkbox:not([value="__ALL__"])');
+                    const allChecked = Array.from(allOtherCheckboxes).every(cb => cb.checked);
+                    allCheckbox.checked = allChecked;
+                }
+            }
+            
+            // Update display immediately (no data processing)
+            this.updateWeekFilterDisplay();
+        }
+        
+        handlePathSelectionImmediate(checkbox) {
+            // Immediate synchronous UI update
+            const allPathCheckboxes = document.querySelectorAll('.path-checkbox');
+            
+            if (checkbox.id === 'path-select-all') {
+                allPathCheckboxes.forEach(cb => {
+                    cb.checked = checkbox.checked;
+                    if (checkbox.checked) {
+                        this.selectedPaths.add(cb.value);
+                    } else {
+                        this.selectedPaths.delete(cb.value);
+                    }
+                });
+            } else {
+                if (checkbox.checked) {
+                    this.selectedPaths.add(checkbox.value);
+                } else {
+                    this.selectedPaths.delete(checkbox.value);
+                }
+                
+                // Update "Select All" checkbox state
+                const selectAllCheckbox = document.getElementById('path-select-all');
+                if (selectAllCheckbox) {
+                    const allChecked = Array.from(allPathCheckboxes).every(c => c.checked);
+                    selectAllCheckbox.checked = allChecked;
+                }
+            }
+        }
+        
+        handleFilterChangeImmediate(checkbox) {
+            // Immediate synchronous UI update
+            const column = checkbox.dataset.column;
+            const value = checkbox.value;
+            
+            if (!this.gridState.filters[column]) {
+                this.gridState.filters[column] = new Set();
+            }
+            
+            if (value === '__ALL__') {
+                const allCheckboxes = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`);
+                if (checkbox.checked) {
+                    this.gridState.filters[column].clear();
+                    allCheckboxes.forEach(cb => {
+                        cb.checked = true;
+                        this.gridState.filters[column].add(cb.value);
+                    });
+                } else {
+                    allCheckboxes.forEach(cb => {
+                        cb.checked = false;
+                    });
+                    this.gridState.filters[column].clear();
+                }
+            } else {
+                if (checkbox.checked) {
+                    this.gridState.filters[column].add(value);
+                } else {
+                    this.gridState.filters[column].delete(value);
+                }
+                
+                // Update "Select All" checkbox state
+                const totalCheckboxes = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`);
+                const checkedCount = this.gridState.filters[column].size;
+                const allCheckbox = document.querySelector(`.multi-select-checkbox[data-column="${column}"][value="__ALL__"]`);
+                if (allCheckbox) {
+                    allCheckbox.checked = (checkedCount === totalCheckboxes.length);
+                }
+            }
+            
+            // Update display immediately (no data processing)
+            this.updateMultiSelectDisplay(column);
+        }
+        
+        // ==================== RENDER FUNCTIONS ====================
+        
+        renderWeekFilter() {
+            const container = document.getElementById('week-filter-container');
+            if (!container) { 
+                console.error('Week filter container not found'); 
+                return; 
+            }
+            
+            if (this.allWeeks.length === 0) { 
+                container.innerHTML = '<p class="text-danger small">No weeks available</p>'; 
+                return; 
+            }
+            
+            let html = `
+                <div class="multi-select-dropdown">
+                    <div class="multi-select-button" data-column="week_date" aria-label="Filter by week date" role="button" tabindex="0">
+                        <span>All Weeks</span>
+                    </div>
+                    <div class="multi-select-menu" role="listbox">
+                        <div class="multi-select-option all-option">
+                            <input type="checkbox" class="week-filter-checkbox" value="__ALL__" id="all-weeks" checked>
+                            <label for="all-weeks" style="cursor:pointer; margin:0; flex:1;">Select All</label>
+                        </div>
+                        ${this.allWeeks.map((value, idx) => {
+                            const valueId = `week-${idx}`;
+                            return `
+                                <div class="multi-select-option">
+                                    <input type="checkbox" class="week-filter-checkbox" value="${value}" id="${valueId}" checked>
+                                    <label for="${valueId}" style="cursor:pointer; margin:0; flex:1;">${value}</label>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+            
+            container.innerHTML = html;
+        }
+        
+        updateWeekFilterDisplay() {
+            const button = document.querySelector('[data-column="week_date"]');
+            if (!button) return;
+            
+            const span = button.querySelector('span');
+            const count = this.selectedWeeks.size;
+            
+            if (count === this.allWeeks.length) {
+                span.textContent = 'All Weeks';
+                span.className = '';
+            } else if (count === 0) {
+                span.textContent = 'None selected';
+                span.className = 'text-muted';
+            } else {
+                span.textContent = `${count} week(s) selected`;
+                span.className = 'selected-count';
+            }
+        }
+        
+        updatePathExplorer() {
+            this.debouncedUpdatePathExplorer();
+        }
+        
+        _updatePathExplorerImmediate() {
+            const filteredData = this.appData.filter(row => this.selectedWeeks.has(row["Week"]));
+            const pathCounts = filteredData.reduce((acc, row) => {
+                acc[row["Path"]] = (acc[row["Path"]] || 0) + 1;
+                return acc;
+            }, {});
+            
+            const newAvailablePaths = new Set(Object.keys(pathCounts));
+            
+            // Keep only selected paths that still exist
+            this.selectedPaths = new Set(
+                [...this.selectedPaths].filter(path => newAvailablePaths.has(path))
+            );
+            
+            const container = document.getElementById('paths-list-container');
+            
+            if (Object.keys(pathCounts).length === 0) {
+                container.innerHTML = `
+                    <div class="alert alert-warning p-2 small">
+                        <strong>No Paths Found.</strong><br>
+                        Please select at least one week in the 'Filter Week Dates' dropdown above to see available paths.
+                    </div>
+                `;
+                this.loadDetailsForSelectedPaths();
+                PerformanceOptimizer.hideProcessingIndicator();
+                return;
+            }
+            
+            // Apply search filter if exists
+            if (this.pathSearchQuery) {
+                this.filterPathList();
+            } else {
+                // Render all paths
+                const allAvailablePathsChecked = newAvailablePaths.size > 0 && 
+                                                [...newAvailablePaths].every(p => this.selectedPaths.has(p));
+                
+                let html = `
+                    <div class="form-check fw-bold border-bottom pb-2 mb-2">
+                        <input class="form-check-input" type="checkbox" id="path-select-all" ${allAvailablePathsChecked ? 'checked' : ''}>
+                        <label class="form-check-label" for="path-select-all">Select All</label>
+                    </div>
+                `;
+                
+                Object.entries(pathCounts)
+                    .sort((a, b) => a[0].localeCompare(b[0]))
+                    .forEach(([path, count]) => {
+                        const pathId = `path-${path.replace(/[^a-zA-Z0-9]/g, '')}`;
+                        const isChecked = this.selectedPaths.has(path) ? 'checked' : '';
+                        html += `
+                            <div class="form-check">
+                                <input class="form-check-input path-checkbox" type="checkbox" value="${escapeHtml(path)}" id="${pathId}" ${isChecked}>
+                                <label class="form-check-label" for="${pathId}">
+                                    ${escapeHtml(path)} <span class="text-muted">(${count})</span>
+                                </label>
+                            </div>
+                        `;
+                    });
+                
+                container.innerHTML = html;
+            }
+            
+            // Load details after rendering
+            this.loadDetailsForSelectedPaths();
+            
+            PerformanceOptimizer.hideProcessingIndicator();
+        }
+        
+        loadDetailsForSelectedPaths() {
+            if (this.selectedPaths.size === 0) {
+                document.getElementById('details-container').innerHTML = `
+                    <div class="text-center p-5">
+                        <p class="text-muted">Select one or more paths from the left to begin.</p>
+                    </div>
+                `;
+                PerformanceOptimizer.hideProcessingIndicator();
+                return;
+            }
+            
+            this.currentDetailRecords = this.appData.filter(row => 
+                this.selectedWeeks.has(row["Week"]) && this.selectedPaths.has(row["Path"])
+            );
+            
+            this.gridState = {
+                filters: {},
+                sortColumn: 'Row ID',
+                sortDirection: 'asc',
+                currentPage: 1
+            };
+            
+            this.renderDetailsView();
+            PerformanceOptimizer.hideProcessingIndicator();
+        }
+        
+        renderDetailsView() {
+            // Use async rendering for better performance
+            requestAnimationFrame(() => {
+                this._renderDetailsViewSync();
+            });
+        }
+        
+        _renderDetailsViewSync() {
+            const enrichedData = this.currentDetailRecords.map(row => {
+                const annotation = this.findAnnotation(row["Path"], row["Week"], row["Row ID"]);
+                return {
+                    ...row,
+                    "Anomaly Type": annotation ? annotation.classification : null,
+                    "Comment": annotation ? annotation.comment : null
+                };
+            });
+            
+            const filterOptions = {};
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                const values = [...new Set(enrichedData.map(row => row[col]))].sort();
+                filterOptions[col] = values;
+            });
+            
+            let filterPanelHTML = '<div class="filter-panel mb-3 row g-3">';
+            
+            for (const [column, values] of Object.entries(filterOptions)) {
+                const columnId = column.replace(/\s+/g, '_');
+                filterPanelHTML += `
+                    <div class="col-md-2">
+                        <label class="form-label fw-bold small">${escapeHtml(column)}</label>
+                        <div class="multi-select-dropdown">
+                            <div class="multi-select-button" data-column="${escapeHtml(column)}" role="button" tabindex="0">
+                                <span>All</span>
+                            </div>
+                            <div class="multi-select-menu" role="listbox">
+                                <div class="multi-select-option all-option">
+                                    <input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="__ALL__" id="all-${columnId}" checked>
+                                    <label for="all-${columnId}" style="cursor:pointer; margin:0; flex:1;">Select All</label>
+                                </div>
+                                ${values.map((value, idx) => {
+                                    const displayValue = value === null ? '(Blank)' : escapeHtml(String(value));
+                                    const valueId = `${columnId}-${idx}`;
+                                    return `
+                                        <div class="multi-select-option">
+                                            <input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="${escapeHtml(String(value))}" id="${valueId}" checked>
+                                            <label for="${valueId}" style="cursor:pointer; margin:0; flex:1;">${displayValue}</label>
+                                        </div>
+                                    `;
+                                }).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            filterPanelHTML += '</div>';
+            
+            const batchSelect = document.getElementById('batch-annotation-select');
+            batchSelect.innerHTML = `<option value="">Choose classification...</option>` + 
+                CONFIG.ANNOTATION_CATEGORIES.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+            
+            document.getElementById('details-container').innerHTML = `
+                ${filterPanelHTML}
+                <div id="grid-summary" class="text-muted small mb-2" role="status" aria-live="polite"></div>
+                <div class="table-responsive" style="max-height: 50vh; overflow-y: auto;">
+                    <table class="table table-hover table-sm">
+                        <thead id="details-table-head" class="sticky-top bg-light"></thead>
+                        <tbody id="details-table-body"></tbody>
+                    </table>
+                </div>
+                <nav aria-label="Pagination">
+                    <div id="pagination-controls" class="d-flex justify-content-center mt-3"></div>
+                </nav>
+                <div id="annotation-controls" class="mt-4 pt-3 border-top">
+                    <h5 class="mb-3">Classify Anomaly</h5>
+                    <div id="annotation-alert-spot" class="mb-2" role="alert" aria-live="polite"></div>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="annotation-dropdown" class="form-label">Classification *</label>
+                            <select id="annotation-dropdown" class="form-select" disabled>
+                                <option value="">Choose a classification...</option>
+                                ${CONFIG.ANNOTATION_CATEGORIES.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label for="comment-input" class="form-label">Comment (max 200 characters)</label>
+                            <textarea class="form-control" id="comment-input" rows="2" maxlength="200" placeholder="Enter iREV value in dollars" disabled></textarea>
+                        </div>
+                    </div>
+                    <div class="d-flex justify-content-end mt-3">
+                        <button id="submit-annotation-btn" class="btn btn-primary" disabled>Submit Anomaly Type</button>
+                    </div>
+                </div>
+            `;
+            
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                this.gridState.filters[col] = new Set(filterOptions[col].map(v => String(v)));
+            });
+            
+            this.updateGridView();
+        }
+        
+        updateGridView() {
+            this.debouncedUpdateGridView();
+        }
+        
+        _updateGridViewImmediate() {
+            try {
+                let processedData = this.filterData(this.currentDetailRecords);
+                processedData = this.sortData(processedData);
+                
+                const totalRecords = processedData.length;
+                const startRecord = totalRecords === 0 ? 0 : (this.gridState.currentPage - 1) * CONFIG.ROWS_PER_PAGE + 1;
+                const endRecord = Math.min(startRecord + CONFIG.ROWS_PER_PAGE - 1, totalRecords);
+                
+                const summaryEl = document.getElementById('grid-summary');
+                if (summaryEl) {
+                    summaryEl.textContent = totalRecords > 0 ? 
+                        `Showing ${startRecord}-${endRecord} of ${totalRecords} records.` : 
+                        'No records match your filters.';
+                }
+                
+                this.renderTablePage(processedData);
+                this.renderPaginationControls(totalRecords);
+                
+                UIHelpers.announceToScreenReader(`Showing ${totalRecords} records`);
+                PerformanceOptimizer.hideProcessingIndicator();
+            } catch (error) {
+                console.error('Grid update failed:', error);
+                UIHelpers.showToast('Failed to update grid', 'error');
+                PerformanceOptimizer.hideProcessingIndicator();
+            }
+        }
+        
+        filterData(data) {
+            return data.filter(row => {
+                return Object.entries(this.gridState.filters).every(([column, selectedValues]) => {
+                    if (!selectedValues || selectedValues.size === 0) return false;
+                    return selectedValues.has(String(row[column]));
+                });
+            });
+        }
+        
+        sortData(data) {
+            return [...data].sort((a, b) => {
+                const valA = a[this.gridState.sortColumn];
+                const valB = b[this.gridState.sortColumn];
+                
+                if (valA === null || valA === undefined) return 1;
+                if (valB === null || valB === undefined) return -1;
+                
+                if (valA < valB) return this.gridState.sortDirection === 'asc' ? -1 : 1;
+                if (valA > valB) return this.gridState.sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
+        renderTablePage(data) {
+            const tableHead = document.getElementById('details-table-head');
+            const tableBody = document.getElementById('details-table-body');
+            if (!tableHead || !tableBody) return;
+            
+            const visibleColumns = CONFIG.DISPLAY_COLUMNS;
+            const start = (this.gridState.currentPage - 1) * CONFIG.ROWS_PER_PAGE;
+            const paginatedItems = data.slice(start, start + CONFIG.ROWS_PER_PAGE);
+            
+            let headerHTML = '<tr>';
+            if (this.batchOps.batchMode) {
+                headerHTML += '<th><input type="checkbox" id="select-all-page" aria-label="Select all on page"></th>';
+            }
+            
+            headerHTML += visibleColumns.map(h => {
+                if (h === 'Anomaly Type' || h === 'Comment') {
+                    return `<th scope="col">${escapeHtml(h)}</th>`;
+                }
+                const arrow = this.gridState.sortColumn === h ? 
+                    (this.gridState.sortDirection === 'asc' ? ' ▲' : ' ▼') : '';
+                return `<th scope="col" class="sortable-header" data-column="${escapeHtml(h)}" role="button" tabindex="0">${escapeHtml(h)}${arrow}</th>`;
+            }).join('');
+            headerHTML += '</tr>';
+            tableHead.innerHTML = headerHTML;
+            
+            tableBody.innerHTML = paginatedItems.map(rec => {
+                const annotation = this.findAnnotation(rec["Path"], rec["Week"], rec["Row ID"]);
+                const annotatedClass = annotation ? 'annotated-row' : '';
+                const isSelected = this.batchOps.selectedRows.has(rec["Row ID"]);
+                
+                let rowHTML = `<tr class="${annotatedClass}" style="cursor:pointer" data-row-id="${escapeHtml(rec["Row ID"])}" title="Click to view illustrative cases">`;
+                
+                if (this.batchOps.batchMode) {
+                    const disabled = annotation ? 'disabled' : '';
+                    rowHTML += `<td><input type="checkbox" class="batch-checkbox" data-row-id="${escapeHtml(rec["Row ID"])}" ${isSelected ? 'checked' : ''} ${disabled}></td>`;
+                }
+                
+                rowHTML += visibleColumns.map(h => {
+                    let cellValue;
+                    if (h === 'Anomaly Type') {
+                        cellValue = annotation ? escapeHtml(annotation.classification) : '<em>N/A</em>';
+                    } else if (h === 'Comment') {
+                        cellValue = annotation ? escapeHtml(annotation.comment) : '<em>N/A</em>';
+                    } else {
+                        cellValue = rec[h] === null ? '<em>(Blank)</em>' : escapeHtml(String(rec[h]));
+                    }
+                    return `<td>${cellValue}</td>`;
+                }).join('');
+                
+                rowHTML += '</tr>';
+                return rowHTML;
+            }).join('');
+            
+            const selectAllPage = document.getElementById('select-all-page');
+            if (selectAllPage) {
+                selectAllPage.addEventListener('change', (e) => {
+                    paginatedItems.forEach(rec => {
+                        if (!this.findAnnotation(rec["Path"], rec["Week"], rec["Row ID"])) {
+                            if (e.target.checked) {
+                                this.batchOps.selectedRows.add(rec["Row ID"]);
+                            } else {
+                                this.batchOps.selectedRows.delete(rec["Row ID"]);
+                            }
+                        }
+                    });
+                    this.batchOps.updateCount();
+                    this.updateGridView();
+                });
+            }
+        }
+        
+        getCurrentPageRecords() {
+            const processedData = this.sortData(this.filterData(this.currentDetailRecords));
+            const start = (this.gridState.currentPage - 1) * CONFIG.ROWS_PER_PAGE;
+            return processedData.slice(start, start + CONFIG.ROWS_PER_PAGE);
+        }
+        
+        renderPaginationControls(totalRecords) {
+            const container = document.getElementById('pagination-controls');
+            if (!container) return;
+            
+            const totalPages = Math.ceil(totalRecords / CONFIG.ROWS_PER_PAGE);
+            if (totalPages <= 1) {
+                container.innerHTML = '';
+                return;
+            }
+            
+            let html = '<ul class="pagination pagination-sm">';
+            html += `<li class="page-item ${this.gridState.currentPage === 1 ? 'disabled' : ''}"><a class="page-link" data-page="${this.gridState.currentPage - 1}">Previous</a></li>`;
+            
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === this.gridState.currentPage ? 'active' : ''}"><a class="page-link" data-page="${i}">${i}</a></li>`;
+            }
+            
+            html += `<li class="page-item ${this.gridState.currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" data-page="${this.gridState.currentPage + 1}">Next</a></li>`;
+            container.innerHTML = html + '</ul>';
+        }
+        
+        updateMultiSelectDisplay(column) {
+            const button = document.querySelector(`.multi-select-button[data-column="${column}"]`);
+            if (!button) return;
+            
+            const selectedCount = this.gridState.filters[column] ? this.gridState.filters[column].size : 0;
+            const span = button.querySelector('span');
+            const totalValues = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`).length;
+            
+            if (selectedCount === 0) {
+                span.textContent = 'None';
+                span.className = 'text-muted';
+            } else if (selectedCount === totalValues) {
+                span.textContent = 'All';
+                span.className = '';
+            } else {
+                span.textContent = `${selectedCount} selected`;
+                span.className = 'selected-count';
+            }
+        }
+        
+        handleSort(column) {
+            if (this.gridState.sortColumn === column) {
+                this.gridState.sortDirection = this.gridState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.gridState.sortColumn = column;
+                this.gridState.sortDirection = 'asc';
+            }
+            this.gridState.currentPage = 1;
+            this.updateGridView();
+        }
+        
+        handleRowClick(row, e) {
+            if (!row || (e && e.target.classList.contains('batch-checkbox'))) return;
+            
+            document.getElementById('annotation-dropdown').value = "";
+            document.getElementById('comment-input').value = "";
+            document.getElementById('submit-annotation-btn').disabled = true;
+            
+            const alertSpot = document.getElementById('annotation-alert-spot');
+            if (alertSpot) alertSpot.innerHTML = '';
+            
+            const rowId = row.dataset.rowId;
+            this.selectedRowForAnnotation = this.currentDetailRecords.find(d => d["Row ID"] === rowId);
+            
+            document.querySelectorAll('#details-table-body tr').forEach(r => r.classList.remove('table-primary'));
+            row.classList.add('table-primary');
+            
+            const isAnnotated = this.isRowAnnotated(
+                this.selectedRowForAnnotation["Path"],
+                this.selectedRowForAnnotation["Week"],
+                this.selectedRowForAnnotation["Row ID"]
+            );
+            
+            document.getElementById('annotation-dropdown').disabled = isAnnotated;
+            document.getElementById('comment-input').disabled = isAnnotated;
+            
+            if (isAnnotated) {
+                const annotation = this.findAnnotation(
+                    this.selectedRowForAnnotation["Path"],
+                    this.selectedRowForAnnotation["Week"],
+                    this.selectedRowForAnnotation["Row ID"]
+                );
+                const alertSpot = document.getElementById('annotation-alert-spot');
+                if (alertSpot) {
+                    alertSpot.innerHTML = `<div class="alert alert-info">This row has already been annotated as <strong>${escapeHtml(annotation.classification)}</strong></div>`;
+                }
+            }
+            
+            this.loadGranularDetails(this.selectedRowForAnnotation);
+        }
+        
+        // Optimized annotation lookup with caching
+        findAnnotation(path, weekDate, rowId) {
+            const cacheKey = `${path}|${weekDate}|${rowId}`;
+            
+            if (this.annotationCache.has(cacheKey)) {
+                return this.annotationCache.get(cacheKey);
+            }
+            
+            const annotation = this.annotationLog.find(a => 
+                a.path === path && a.week === weekDate && a.row_id === rowId
+            );
+            
+            this.annotationCache.set(cacheKey, annotation || null);
+            return annotation;
+        }
+        
+        isRowAnnotated(path, weekDate, rowId) {
+            return !!this.findAnnotation(path, weekDate, rowId);
+        }
+        
+        async handleAnnotation() {
+            try {
+                if (!this.selectedRowForAnnotation) {
+                    throw new Error("Please select a row before submitting an annotation");
+                }
+                
+                const path = this.selectedRowForAnnotation["Path"];
+                const week = this.selectedRowForAnnotation["Week"];
+                const rowId = this.selectedRowForAnnotation["Row ID"];
+                const annotation = document.getElementById('annotation-dropdown').value;
+                const commentInput = document.getElementById('comment-input').value;
+                const comment = sanitizeInput(commentInput);
+                
+                if (!annotation) {
+                    throw new Error("Please select a classification");
+                }
+                
+                if (this.isRowAnnotated(path, week, rowId)) {
+                    throw new Error(`This row is already annotated`);
+                }
+                
+                const confirmed = await UIHelpers.showConfirmationDialog({
+                    path: path,
+                    classification: annotation,
+                    comment: comment,
+                    weeks: [week],
+                    affectedRows: 1
+                });
+                
+                if (!confirmed) {
+                    return;
+                }
+                
+                await this.saveAnnotation(path, [week], annotation, comment, rowId);
+                
+            } catch (error) {
+                console.error('Annotation failed:', error);
+                UIHelpers.showToast(error.message, 'error');
+                const alertSpot = document.getElementById('annotation-alert-spot');
+                if (alertSpot) {
+                    alertSpot.innerHTML = `<div class="alert alert-danger">${escapeHtml(error.message)}</div>`;
+                }
+            }
+        }
+        
+        async saveAnnotation(path, weeks, classification, comment, rowId) {
+            try {
+                UIHelpers.showLoading('Saving annotation...');
+                
+                const annotationId = generateUUID();
+                const logEntry = {
+                    annotation_id: annotationId,
+                    row_id: rowId,
+                    week: weeks[0],
+                    path: path,
+                    classification: classification,
+                    comment: comment,
+                    timestamp: formatTimestamp(new Date())
+                };
+                
+                this.annotationLog.push(logEntry);
+                
+                // Invalidate cache for this annotation
+                const cacheKey = `${path}|${weeks[0]}|${rowId}`;
+                this.annotationCache.set(cacheKey, logEntry);
+                
+                this.updateLogView();
+                this.updateGridView();
+                
+                const alertSpot = document.getElementById('annotation-alert-spot');
+                if (alertSpot) {
+                    alertSpot.innerHTML = `<div class="alert alert-success">Annotation for row <strong>${escapeHtml(rowId)}</strong> saved successfully.</div>`;
+                }
+                
+                document.getElementById('annotation-dropdown').disabled = true;
+                document.getElementById('comment-input').disabled = true;
+                document.getElementById('submit-annotation-btn').disabled = true;
+                
+                UIHelpers.showToast('Annotation saved successfully', 'success');
+                
+                setTimeout(() => {
+                    if (alertSpot) alertSpot.innerHTML = '';
+                }, 4000);
+                
+            } catch (error) {
+                console.error('Save failed:', error);
+                throw error;
+            } finally {
+                UIHelpers.hideLoading();
+            }
+        }
+        
+        loadGranularDetails(rowData) {
+            if (!rowData) return;
+            
+            const headers = ["Row ID", "Week", "Path", "Journey Type", "Team", "Business Unit", "Device", "Completed", "Hard Anomaly", "Visitor Id", "Visitor No", "Visitor Page No", "MCV ID", "Agent ID", "Correlation ID", "URL Referral", "ContentSquare URL Link"];
+            let flatData = [];
+            
+            if (rowData.granular_details && rowData.granular_details.length > 0) {
+                rowData.granular_details.forEach(detail => {
+                    if (detail["Visitor Page No"] && Array.isArray(detail["Visitor Page No"])) {
+                        detail["Visitor Page No"].forEach(pgNo => {
+                            const newRowData = { ...rowData };
+                            delete newRowData.granular_details;
+                            flatData.push({ ...newRowData, ...detail, "Visitor Page No": pgNo });
+                        });
+                    }
+                });
+            }
+            
+            let html = `
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-secondary btn-sm mb-3" onclick="app.goBackToExplorer()">← Back to Anomaly Inventory</button>
+                    <button class="btn btn-primary btn-sm mb-3" onclick="app.goBackToExplorer()">🏠 Home Page</button>
+                </div>
+                <h3 class="mb-3">Illustrative Cases for Row ID: <span class="text-primary fw-bold">${escapeHtml(rowData["Row ID"])}</span></h3>
+                <div class="info-box">💡 Click on any <strong>Visitor ID</strong> to view detailed session analysis and page-level tracking data.</div>
+                <div class="mb-3">
+                    <span class="badge bg-secondary">Path: ${escapeHtml(rowData["Path"])}</span>
+                    <span class="badge bg-info text-dark">Week: ${escapeHtml(rowData["Week"])}</span>
+                </div>
+            `;
+            
+            if (flatData.length > 0) {
+                html += `
+                    <p class="text-muted">Displaying <strong>${flatData.length}</strong> total page views for this record.</p>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm table-hover table-striped">
+                            <thead class="table-light">
+                                <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
+                            </thead>
+                            <tbody>
+                                ${flatData.map(row => `
+                                    <tr>
+                                        <td>${escapeHtml(row["Row ID"])}</td>
+                                        <td>${escapeHtml(row["Week"])}</td>
+                                        <td>${escapeHtml(row["Path"])}</td>
+                                        <td>${row["Journey Type"] ? escapeHtml(row["Journey Type"]) : '<em>(Blank)</em>'}</td>
+                                        <td>${escapeHtml(row["Team"])}</td>
+                                        <td>${escapeHtml(row["Business Unit"])}</td>
+                                        <td>${row["Device"] ? escapeHtml(row["Device"]) : '<em>(Blank)</em>'}</td>
+                                        <td>${escapeHtml(row["Completed"])}</td>
+                                        <td>${escapeHtml(row["Hard Anomaly"])}</td>
+                                        <td><a class="visitor-id-link" data-visitor-id="${escapeHtml(row["Visitor Id"])}">${escapeHtml(row["Visitor Id"])}</a></td>
+                                        <td>${escapeHtml(String(row["Visitor No"]))}</td>
+                                        <td>${escapeHtml(String(row["Visitor Page No"]))}</td>
+                                        <td>${escapeHtml(row["MCV ID"])}</td>
+                                        <td>${escapeHtml(row["Agent ID"])}</td>
+                                        <td>${escapeHtml(row["Correlation ID"])}</td>
+                                        <td><a href="${escapeHtml(row["URL Referral"])}" target="_blank" class="small">${escapeHtml((row["URL Referral"] || '').substring(0, 40))}...</a></td>
+                                        <td><a href="${escapeHtml(row["ContentSquare URL Link"])}" target="_blank">View Session</a></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                html += '<div class="alert alert-warning mt-3">No granular visitor details available for this record.</div>';
+            }
+            
+            document.getElementById('granular-details-content').innerHTML = html;
+            new bootstrap.Tab(document.getElementById('granular-tab')).show();
+        }
+        
+        goBackToExplorer() {
+            new bootstrap.Tab(document.getElementById('explorer-tab')).show();
+        }
+        
+        updateLogView() {
+            const tableHead = document.getElementById('log-table-head');
+            const tableBody = document.getElementById('log-table-body');
+            if (!tableHead || !tableBody) return;
+            
+            tableHead.innerHTML = `<tr>${CONFIG.LOG_DISPLAY_COLUMNS.map(h => `<th scope="col">${escapeHtml(h)}</th>`).join('')}</tr>`;
+            
+            const sortedLog = [...this.annotationLog].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            tableBody.innerHTML = sortedLog.map(log => `
+                <tr>
+                    <td>${escapeHtml(log.annotation_id)}</td>
+                    <td>${escapeHtml(log.row_id)}</td>
+                    <td>${escapeHtml(log.week)}</td>
+                    <td><span class="path-badge">${escapeHtml(log.path)}</span></td>
+                    <td>${escapeHtml(log.classification)}</td>
+                    <td>${escapeHtml(log.comment || '-')}</td>
+                    <td>${escapeHtml(log.timestamp)}</td>
+                </tr>
+            `).join('');
+        }
+        
+        populateBatchAnnotationDropdown() {
+            const select = document.getElementById('batch-annotation-select');
+            select.innerHTML = '<option value="">Choose classification...</option>' + 
+                CONFIG.ANNOTATION_CATEGORIES.map(cat => `<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join('');
+        }
+        
+        renderAnalytics() {
+            const container = document.getElementById('analytics-content');
+            
+            if (this.annotationLog.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center p-5">
+                        <p class="text-muted">No annotation data available. Please classify some records first.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = `
+                <div class="row g-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Anomaly Classification Wise Counts</h5>
+                                <canvas id="pie-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-body">
+                                <h5 class="card-title">Annotations by Path</h5>
+                                <canvas id="bar-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card mt-4">
+                    <div class="card-body">
+                        <h5 class="card-title">Summary Statistics</h5>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h3 class="text-primary">${this.annotationLog.length}</h3>
+                                <p class="text-muted">Total Annotations</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h3 class="text-success">${new Set(this.annotationLog.map(l => l.path)).size}</h3>
+                                <p class="text-muted">Unique Paths</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h3 class="text-info">${this.annotationLog.length}</h3>
+                                <p class="text-muted">Total Rows Affected</p>
+                            </div>
+                            <div class="col-md-3">
+                                <h3 class="text-warning">${new Set(this.annotationLog.map(l => l.classification)).size}</h3>
+                                <p class="text-muted">Classifications Used</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            this.renderCharts();
+        }
+        
+        renderCharts() {
+            if (this.chartInstances.pie) {
+                this.chartInstances.pie.destroy();
+                delete this.chartInstances.pie;
+            }
+            if (this.chartInstances.bar) {
+                this.chartInstances.bar.destroy();
+                delete this.chartInstances.bar;
+            }
+            
+            const pieCtx = document.getElementById('pie-chart');
+            if (pieCtx) {
+                const classificationCounts = this.annotationLog.reduce((acc, log) => {
+                    acc[log.classification] = (acc[log.classification] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                this.chartInstances.pie = new Chart(pieCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: Object.keys(classificationCounts),
+                        datasets: [{
+                            data: Object.values(classificationCounts),
+                            backgroundColor: ['#0d6efd', '#198754', '#ffc107', '#dc3545', '#6f42c1', '#fd7e14', '#20c997', '#0dcaf0', '#d63384', '#6610f2']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            const barCtx = document.getElementById('bar-chart');
+            if (barCtx) {
+                const pathCounts = this.annotationLog.reduce((acc, log) => {
+                    acc[log.path] = (acc[log.path] || 0) + 1;
+                    return acc;
+                }, {});
+                
+                this.chartInstances.bar = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(pathCounts),
+                        datasets: [{
+                            label: 'Annotations',
+                            data: Object.values(pathCounts),
+                            backgroundColor: '#0dcaf0'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: true,
+                        plugins: {
+                            legend: {
+                                display: false
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    stepSize: 1
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        generateFullSessionData() {
+            const evar74_options = ["US:PartnerProspect:SBS:Landing:BillingInfo", "US:AcctMgmt:Login:Success", "US:CardApply:SubmitDecision"];
+            const evar30_options = ["Enrollment:Start", "Enrollment:Data", "Login:Attempt", "Page:View"];
+            const allVisitorIds = [...new Set(SAMPLE_DATA.flatMap(d => d.granular_details.map(gd => gd["Visitor Id"])))];
+            
+            allVisitorIds.forEach(visitorId => {
+                MOCK_SESSION_DATA[visitorId] = [];
+                const numVisits = Math.floor(Math.random() * 3) + 1;
+                
+                for (let visitNo = 1; visitNo <= numVisits; visitNo++) {
+                    const numPages = Math.floor(Math.random() * 10) + 2;
+                    let pageCounter = Math.floor(Math.random() * 5) + 1;
+                    
+                    for (let i = 0; i < numPages; i++) {
+                        MOCK_SESSION_DATA[visitorId].push({
+                            "visitor id": visitorId,
+                            "visitor no": visitNo,
+                            "page no": pageCounter,
+                            "post_evar30": evar30_options[Math.floor(Math.random() * evar30_options.length)],
+                            "post_evar50 (URL)": `https://www.americanexpress.com/us/credit-cards/business/.../stp-id=${generateUUID().substring(0,8)}`,
+                            "post_evar74": evar74_options[Math.floor(Math.random() * evar74_options.length)],
+                            "post_prop26": "default",
+                            "post_prop22": i % 4 === 0 ? "ChangeInError" : "",
+                            "post_referral": "https://apply.americanexpress.com"
+                        });
+                        pageCounter += Math.floor(Math.random() * 5) + 2;
+                    }
+                }
+            });
+        }
+        
+        renderSessionAnalysis(visitorId) {
+            const container = document.getElementById('session-analysis-content');
+            const sessionData = MOCK_SESSION_DATA[visitorId] || [];
+            const totalPageViews = sessionData.length;
+            const totalVisits = new Set(sessionData.map(e => e["visitor no"])).size;
+            
+            let html = `
+                <div class="d-flex justify-content-between">
+                    <button class="btn btn-secondary btn-sm mb-3" onclick="app.goBackToIllustrativeCases()">← Back to Illustrative Cases</button>
+                    <button class="btn btn-primary btn-sm mb-3" onclick="app.goBackToExplorer()">🏠 Home Page</button>
+                </div>
+                <h3>Session Analysis for Visitor ID: <span class="text-primary fw-bold">${escapeHtml(visitorId)}</span></h3>
+                <p class="text-muted">Showing ${totalPageViews} page views across ${totalVisits} visit(s).</p>
+            `;
+            
+            if (sessionData.length > 0) {
+                const headers = Object.keys(sessionData[0]);
+                html += `
+                    <div class="table-responsive">
+                        <table class="table table-sm table-striped table-hover">
+                            <thead class="table-light">
+                                <tr>${headers.map(h => `<th>${escapeHtml(h)}</th>`).join('')}</tr>
+                            </thead>
+                            <tbody>
+                                ${sessionData.map(row => `
+                                    <tr>${headers.map(h => `<td>${escapeHtml(row[h])}</td>`).join('')}</tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } else {
+                html += `<div class="alert alert-warning">No detailed session data found for this visitor.</div>`;
+            }
+            
+            container.innerHTML = html;
+            new bootstrap.Tab(document.getElementById('session-analysis-tab-btn')).show();
+        }
+        
+        goBackToIllustrativeCases() {
+            new bootstrap.Tab(document.getElementById('granular-tab')).show();
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    let app;
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            app = new AnomalyGridApp();
+            window.app = app;
+            
+            setTimeout(() => {
+                app.generateFullSessionData();
+            }, 0);
+        } catch (error) {
+            console.error('Failed to start application:', error);
+            alert('Failed to start application. Please refresh the page.');
+        }
+    });
+    </script>
+</body>
+</html>
