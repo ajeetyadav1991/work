@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DPN Anomaly Detection - Virtual Scrolling v13.0</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; font-size: 0.95rem; }
+        .header { 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); 
+            color: white; 
+            padding: 25px; 
+            text-align: center; 
+            margin-bottom: 20px; 
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
+        }
+        .panel { 
+            background-color: white; 
+            padding: 25px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08); 
+            min-height: 75vh; 
+            height: 100%;
+        }
+        
+        /* ==================== VIRTUAL SCROLL CONTAINER ==================== */
+        .virtual-scroll-container {
+            position: relative;
+            height: 500px;
+            overflow: hidden;
+            border: 2px solid #dee2e6;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .virtual-scroll-viewport {
+            position: relative;
+            height: 100%;
+            overflow-y: auto;
+            overflow-x: hidden;
+            scroll-behavior: smooth;
+        }
+        
+        /* Custom Scrollbar Styling */
+        .virtual-scroll-viewport::-webkit-scrollbar {
+            width: 14px;
+        }
+        
+        .virtual-scroll-viewport::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .virtual-scroll-viewport::-webkit-scrollbar-thumb {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 10px;
+            border: 3px solid #f1f1f1;
+        }
+        
+        .virtual-scroll-viewport::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(135deg, #5568d3 0%, #653a8b 100%);
+        }
+        
+        /* Firefox Scrollbar */
+        .virtual-scroll-viewport {
+            scrollbar-width: thin;
+            scrollbar-color: #667eea #f1f1f1;
+        }
+        
+        .virtual-scroll-content {
+            position: relative;
+            width: 100%;
+        }
+        
+        .virtual-scroll-items {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+        }
+        
+        /* ==================== SCROLL INDICATORS ==================== */
+        .scroll-indicator {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: white;
+        }
+        
+        .scroll-indicator.visible {
+            opacity: 1;
+        }
+        
+        .scroll-indicator-top {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(102, 126, 234, 0.95) 0%, rgba(102, 126, 234, 0) 100%);
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        
+        .scroll-indicator-bottom {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(102, 126, 234, 0.95) 0%, rgba(102, 126, 234, 0) 100%);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+        
+        .scroll-indicator-arrow {
+            display: inline-block;
+            margin: 0 8px;
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-8px); }
+            60% { transform: translateY(-4px); }
+        }
+        
+        .scroll-indicator-bottom .scroll-indicator-arrow {
+            animation: bounceDown 2s infinite;
+        }
+        
+        @keyframes bounceDown {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(8px); }
+            60% { transform: translateY(4px); }
+        }
+        
+        /* Shadow indicators */
+        .scroll-shadow-top,
+        .scroll-shadow-bottom {
+            position: absolute;
+            left: 0;
+            right: 14px; /* Account for scrollbar */
+            height: 20px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 5;
+        }
+        
+        .scroll-shadow-top {
+            top: 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.15) 0%, transparent 100%);
+        }
+        
+        .scroll-shadow-bottom {
+            bottom: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.15) 0%, transparent 100%);
+        }
+        
+        .scroll-shadow-top.visible,
+        .scroll-shadow-bottom.visible {
+            opacity: 1;
+        }
+        
+        /* ==================== SCROLL POSITION INDICATOR ==================== */
+        .scroll-position-info {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            background: rgba(102, 126, 234, 0.95);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            z-index: 15;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            pointer-events: none;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        }
+        
+        .scroll-position-info.visible {
+            opacity: 1;
+        }
+        
+        /* ==================== TABLE STYLES ==================== */
+        .virtual-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+        
+        .virtual-table thead {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .virtual-table thead th {
+            color: white;
+            padding: 12px 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-align: left;
+            border: none;
+        }
+        
+        .virtual-table tbody tr {
+            border-bottom: 1px solid #e9ecef;
+            transition: background-color 0.15s ease;
+        }
+        
+        .virtual-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+        
+        .virtual-table tbody td {
+            padding: 10px 8px;
+            font-size: 0.875rem;
+        }
+        
+        .sortable-header { 
+            cursor: pointer; 
+            user-select: none; 
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        
+        .sortable-header:hover { 
+            background-color: rgba(255,255,255,0.1);
+        }
+        
+        .classified-row { background-color: #d1e7dd !important; }
+        .classified-row td { color: #0a3622; font-weight: 500; }
+        .closed-row { background-color: #cfe2ff !important; }
+        .closed-row td { color: #052c65; font-weight: 500; }
+        
+        /* ==================== UI HELPERS ==================== */
+        .loading-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.7); display: flex; flex-direction: column; 
+            justify-content: center; align-items: center; z-index: 9999; 
+        }
+        .loading-overlay .spinner-border { width: 3rem; height: 3rem; }
+        .loading-overlay p { color: white; margin-top: 1rem; font-size: 1.1rem; }
+        .toast-container { position: fixed; top: 20px; right: 20px; z-index: 9998; }
+        
+        .filter-panel { 
+            background-color: #f8f9fa; 
+            border: 1px solid #e9ecef; 
+            border-radius: .5rem; 
+            padding: 1rem; 
+            margin-bottom: 1rem;
+        }
+        
+        .multi-select-dropdown { position: relative; }
+        .multi-select-button { 
+            width: 100%; 
+            font-size: .875rem; 
+            text-align: left; 
+            background-color: white; 
+            border: 1px solid #ced4da; 
+            padding: .35rem .75rem; 
+            border-radius: .375rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            cursor: pointer; 
+            transition: all 0.2s; 
+        }
+        .multi-select-button:hover { 
+            background-color: #f8f9fa; 
+            border-color: #86b7fe; 
+        }
+        .multi-select-button::after { 
+            content: "▼"; 
+            font-size: 0.7rem; 
+            color: #6c757d; 
+            margin-left: .5rem; 
+        }
+        .multi-select-menu { 
+            display: none; 
+            position: absolute; 
+            width: 100%; 
+            max-height: 280px; 
+            overflow-y: auto; 
+            background-color: white; 
+            border: 1px solid #ced4da; 
+            border-radius: .5rem; 
+            z-index: 1050; 
+            padding: .5rem; 
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15); 
+            margin-top: 4px; 
+        }
+        .multi-select-menu.show { 
+            display: block; 
+            animation: slideDown 0.2s ease-out; 
+        }
+        @keyframes slideDown { 
+            from { opacity: 0; transform: translateY(-10px); } 
+            to { opacity: 1; transform: translateY(0); } 
+        }
+        .multi-select-option { 
+            padding: .5rem; 
+            cursor: default;
+            border-radius: .375rem; 
+            display: flex; 
+            align-items: center; 
+        }
+        .multi-select-option input[type="checkbox"] { 
+            margin-right: .6rem; 
+            cursor: pointer;
+        }
+        .multi-select-option label {
+            cursor: pointer;
+            margin: 0;
+            flex: 1;
+        }
+        .multi-select-option.all-option { 
+            font-weight: 600; 
+            border-bottom: 1px solid #dee2e6; 
+            margin-bottom: .3rem; 
+            padding-bottom: .6rem; 
+        }
+        
+        .selected-count { 
+            color: #0d6efd; 
+            font-weight: 600; 
+            font-size: 0.85rem; 
+        }
+        
+        .badge-new {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            margin-left: 8px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .info-box {
+            background-color: #e7f3fe; 
+            border-left: 5px solid #0d6efd;
+            padding: 15px; 
+            margin: 20px 0; 
+            font-size: 1em; 
+            border-radius: 4px;
+        }
+        
+        .sr-only { 
+            position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; 
+            overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border-width: 0; 
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .virtual-scroll-container {
+                height: 400px;
+            }
+            .header h1 { font-size: 1.5rem; }
+            .panel { padding: 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="spinner-border text-light" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p id="loading-message">Processing...</p>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <div class="header">
+        <h1>🚀 DPN Anomaly Detection <span class="badge-new">VIRTUAL SCROLL</span></h1>
+        <p class="lead mb-0">High-Performance Virtual Scrolling for Large Datasets</p>
+    </div>
+
+    <div class="container-fluid px-2 px-md-4">
+        <div class="panel">
+            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                <h4 class="mb-0">Anomaly Inventory (Virtual Scrolling)</h4>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" id="generate-large-dataset">
+                        📊 Generate Large Dataset (1000 rows)
+                    </button>
+                    <button class="btn btn-sm btn-outline-success" id="export-csv-btn">
+                        💾 Export CSV
+                    </button>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <strong>💡 Virtual Scrolling Features:</strong>
+                <ul class="mb-0 mt-2">
+                    <li>✅ <strong>Scroll indicators</strong> - Visual arrows & shadows show scrollable content</li>
+                    <li>✅ <strong>Position tracker</strong> - See your current position (e.g., "Row 45/1000")</li>
+                    <li>✅ <strong>Smooth performance</strong> - Handles 10,000+ rows without lag</li>
+                    <li>✅ <strong>Custom scrollbar</strong> - Styled for better visibility</li>
+                </ul>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-panel row g-3">
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label fw-bold small">Team</label>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-button" data-column="Team" role="button">
+                            <span>All</span>
+                        </div>
+                        <div class="multi-select-menu" role="listbox">
+                            <div class="multi-select-option all-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Team" value="__ALL__" id="all-team" checked>
+                                <label for="all-team">Select All</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Team" value="US" id="team-us" checked>
+                                <label for="team-us">US</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Team" value="India" id="team-india" checked>
+                                <label for="team-india">India</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label fw-bold small">Device</label>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-button" data-column="Device" role="button">
+                            <span>All</span>
+                        </div>
+                        <div class="multi-select-menu" role="listbox">
+                            <div class="multi-select-option all-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Device" value="__ALL__" id="all-device" checked>
+                                <label for="all-device">Select All</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Device" value="mobile" id="device-mobile" checked>
+                                <label for="device-mobile">mobile</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Device" value="PC" id="device-pc" checked>
+                                <label for="device-pc">PC</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Device" value="desktop" id="device-desktop" checked>
+                                <label for="device-desktop">desktop</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-6 col-md-3">
+                    <label class="form-label fw-bold small">Hard Anomaly</label>
+                    <div class="multi-select-dropdown">
+                        <div class="multi-select-button" data-column="Hard Anomaly" role="button">
+                            <span>All</span>
+                        </div>
+                        <div class="multi-select-menu" role="listbox">
+                            <div class="multi-select-option all-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Hard Anomaly" value="__ALL__" id="all-anomaly" checked>
+                                <label for="all-anomaly">Select All</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Hard Anomaly" value="true" id="anomaly-true" checked>
+                                <label for="anomaly-true">true</label>
+                            </div>
+                            <div class="multi-select-option">
+                                <input type="checkbox" class="multi-select-checkbox" data-column="Hard Anomaly" value="false" id="anomaly-false" checked>
+                                <label for="anomaly-false">false</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-12 col-sm-6 col-md-3 d-flex align-items-end">
+                    <button class="btn btn-outline-danger btn-sm w-100" id="reset-filters">
+                        🔄 Reset Filters
+                    </button>
+                </div>
+            </div>
+
+            <div id="grid-summary" class="text-muted small mb-2"></div>
+
+            <!-- Virtual Scroll Container -->
+            <div class="virtual-scroll-container">
+                <!-- Scroll Indicators -->
+                <div class="scroll-indicator scroll-indicator-top" id="scroll-indicator-top">
+                    <span class="scroll-indicator-arrow">▲</span>
+                    Scroll up for more
+                    <span class="scroll-indicator-arrow">▲</span>
+                </div>
+                
+                <div class="scroll-shadow-top" id="scroll-shadow-top"></div>
+                
+                <div class="scroll-position-info" id="scroll-position-info">
+                    Row 1 / 100
+                </div>
+                
+                <div class="virtual-scroll-viewport" id="virtual-scroll-viewport">
+                    <div class="virtual-scroll-content" id="virtual-scroll-content">
+                        <table class="virtual-table">
+                            <thead id="virtual-table-head">
+                                <tr>
+                                    <th class="sortable-header" data-column="Row ID">Row ID ▲</th>
+                                    <th class="sortable-header" data-column="Week">Week</th>
+                                    <th class="sortable-header" data-column="Path">Path</th>
+                                    <th class="sortable-header" data-column="Journey Type">Journey Type</th>
+                                    <th class="sortable-header" data-column="Team">Team</th>
+                                    <th class="sortable-header" data-column="Business Unit">Business Unit</th>
+                                    <th class="sortable-header" data-column="Device">Device</th>
+                                    <th class="sortable-header" data-column="Completed">Completed</th>
+                                    <th class="sortable-header" data-column="Hard Anomaly">Hard Anomaly</th>
+                                    <th>Anomaly Type</th>
+                                </tr>
+                            </thead>
+                        </table>
+                        <div class="virtual-scroll-items" id="virtual-scroll-items"></div>
+                    </div>
+                </div>
+                
+                <div class="scroll-shadow-bottom" id="scroll-shadow-bottom"></div>
+                
+                <div class="scroll-indicator scroll-indicator-bottom" id="scroll-indicator-bottom">
+                    <span class="scroll-indicator-arrow">▼</span>
+                    Scroll down for more
+                    <span class="scroll-indicator-arrow">▼</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+    'use strict';
+
+    // ==================== CONFIGURATION ====================
+    const CONFIG = {
+        ROW_HEIGHT: 45,
+        BUFFER_SIZE: 5,
+        SCROLL_DEBOUNCE: 16,
+        FILTERABLE_COLUMNS: ["Team", "Device", "Hard Anomaly"],
+        DISPLAY_COLUMNS: ["Row ID", "Week", "Path", "Journey Type", "Team", "Business Unit", "Device", "Completed", "Hard Anomaly", "Anomaly Type"]
+    };
+
+    // ==================== UTILITY FUNCTIONS ====================
+    function escapeHtml(unsafe) {
+        if (unsafe === null || unsafe === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = String(unsafe);
+        return div.innerHTML;
+    }
+
+    class UIHelpers {
+        static showLoading(message = 'Processing...') {
+            const overlay = document.getElementById('loading-overlay');
+            const messageEl = document.getElementById('loading-message');
+            messageEl.textContent = message;
+            overlay.style.display = 'flex';
+        }
+        static hideLoading() { 
+            document.getElementById('loading-overlay').style.display = 'none'; 
+        }
+        
+        static showToast(message, type = 'success') {
+            const container = document.getElementById('toast-container');
+            const bgClass = { success: 'bg-success', error: 'bg-danger', warning: 'bg-warning text-dark', info: 'bg-info' }[type] || 'bg-success';
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white ${bgClass} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `<div class="d-flex"><div class="toast-body">${escapeHtml(message)}</div><button type="button" class="btn-close ${type === 'warning' ? '' : 'btn-close-white'} me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+            
+            container.appendChild(toast);
+            const bsToast = new bootstrap.Toast(toast, { delay: 4000 });
+            bsToast.show();
+            toast.addEventListener('hidden.bs.toast', () => toast.remove());
+        }
+    }
+
+    // ==================== VIRTUAL SCROLLER CLASS ====================
+    class VirtualScroller {
+        constructor(options) {
+            this.viewport = options.viewport;
+            this.content = options.content;
+            this.itemsContainer = options.itemsContainer;
+            this.data = options.data || [];
+            this.rowHeight = options.rowHeight || CONFIG.ROW_HEIGHT;
+            this.bufferSize = options.bufferSize || CONFIG.BUFFER_SIZE;
+            this.renderItem = options.renderItem;
+            
+            this.visibleStart = 0;
+            this.visibleEnd = 0;
+            this.lastScrollTop = 0;
+            this.scrollTimeout = null;
+            
+            this.setupScrollListener();
+            this.setupScrollIndicators();
+        }
+        
+        setData(data) {
+            this.data = data;
+            this.render();
+        }
+        
+        setupScrollListener() {
+            this.viewport.addEventListener('scroll', () => {
+                this.handleScroll();
+                this.updateScrollIndicators();
+                this.updateScrollPosition();
+            });
+        }
+        
+        setupScrollIndicators() {
+            this.indicatorTop = document.getElementById('scroll-indicator-top');
+            this.indicatorBottom = document.getElementById('scroll-indicator-bottom');
+            this.shadowTop = document.getElementById('scroll-shadow-top');
+            this.shadowBottom = document.getElementById('scroll-shadow-bottom');
+            this.positionInfo = document.getElementById('scroll-position-info');
+            
+            // Initial state
+            setTimeout(() => this.updateScrollIndicators(), 100);
+        }
+        
+        updateScrollIndicators() {
+            const scrollTop = this.viewport.scrollTop;
+            const scrollHeight = this.viewport.scrollHeight;
+            const clientHeight = this.viewport.clientHeight;
+            const scrollBottom = scrollHeight - clientHeight - scrollTop;
+            
+            // Top indicator
+            if (scrollTop > 50) {
+                this.indicatorTop.classList.add('visible');
+                this.shadowTop.classList.add('visible');
+            } else {
+                this.indicatorTop.classList.remove('visible');
+                this.shadowTop.classList.remove('visible');
+            }
+            
+            // Bottom indicator
+            if (scrollBottom > 50) {
+                this.indicatorBottom.classList.add('visible');
+                this.shadowBottom.classList.add('visible');
+            } else {
+                this.indicatorBottom.classList.remove('visible');
+                this.shadowBottom.classList.remove('visible');
+            }
+        }
+        
+        updateScrollPosition() {
+            clearTimeout(this.scrollTimeout);
+            
+            const currentRow = Math.floor(this.viewport.scrollTop / this.rowHeight) + 1;
+            const totalRows = this.data.length;
+            
+            this.positionInfo.textContent = `Row ${currentRow} / ${totalRows}`;
+            this.positionInfo.classList.add('visible');
+            
+            this.scrollTimeout = setTimeout(() => {
+                this.positionInfo.classList.remove('visible');
+            }, 1500);
+        }
+        
+        handleScroll() {
+            const scrollTop = this.viewport.scrollTop;
+            
+            // Throttle rendering
+            if (Math.abs(scrollTop - this.lastScrollTop) < this.rowHeight / 2) {
+                return;
+            }
+            
+            this.lastScrollTop = scrollTop;
+            this.render();
+        }
+        
+        render() {
+            if (this.data.length === 0) {
+                this.itemsContainer.innerHTML = '<div style="padding: 40px; text-align: center; color: #6c757d;">No data to display</div>';
+                this.content.style.height = '100px';
+                return;
+            }
+            
+            const scrollTop = this.viewport.scrollTop;
+            const viewportHeight = this.viewport.clientHeight;
+            
+            // Calculate visible range
+            const startIndex = Math.max(0, Math.floor(scrollTop / this.rowHeight) - this.bufferSize);
+            const endIndex = Math.min(
+                this.data.length,
+                Math.ceil((scrollTop + viewportHeight) / this.rowHeight) + this.bufferSize
+            );
+            
+            this.visibleStart = startIndex;
+            this.visibleEnd = endIndex;
+            
+            // Set content height for proper scrollbar
+            const totalHeight = this.data.length * this.rowHeight;
+            this.content.style.height = `${totalHeight}px`;
+            
+            // Position items container
+            this.itemsContainer.style.transform = `translateY(${startIndex * this.rowHeight}px)`;
+            
+            // Render visible items
+            const visibleData = this.data.slice(startIndex, endIndex);
+            this.itemsContainer.innerHTML = this.renderItems(visibleData, startIndex);
+        }
+        
+        renderItems(items, startIndex) {
+            return `<table class="virtual-table">
+                <tbody>${items.map((item, idx) => this.renderItem(item, startIndex + idx)).join('')}</tbody>
+            </table>`;
+        }
+        
+        scrollToTop() {
+            this.viewport.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+        
+        scrollToRow(index) {
+            const scrollTop = index * this.rowHeight;
+            this.viewport.scrollTo({ top: scrollTop, behavior: 'smooth' });
+        }
+    }
+
+    // ==================== DATA EXPORT ====================
+    class DataExporter {
+        static exportToCSV(data, filename) {
+            if (!data || data.length === 0) return UIHelpers.showToast('No data to export', 'warning');
+            const headers = Object.keys(data[0]);
+            const csv = [ headers.join(','), ...data.map(row => headers.map(h => this.escapeCSV(row[h])).join(',')) ].join('\n');
+            this.downloadFile(csv, filename, 'text/csv');
+            UIHelpers.showToast(`Exported ${data.length} records to CSV`, 'success');
+        }
+        
+        static escapeCSV(value) {
+            if (value === null || value === undefined) return '';
+            const str = String(value);
+            return (str.includes(',') || str.includes('"') || str.includes('\n')) ? `"${str.replace(/"/g, '""')}"` : str;
+        }
+        
+        static downloadFile(content, filename, mimeType) {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+    }
+
+    // ==================== SAMPLE DATA ====================
+    const SAMPLE_DATA = [
+        { "Row ID": 'a1', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'a2', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Upgraded", "Team": "US", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "Anomaly Type": "N/A" },
+        { "Row ID": 'a3', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "India", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'a4', "Week": '2024-01-15', "Path": '/home', "Journey Type": null, "Team": "US", "Business Unit": "sbs", "Device": "desktop", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'a5', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": null, "Completed": "no", "Hard Anomaly": "true", "Anomaly Type": "N/A" },
+        { "Row ID": 'a6', "Week": '2024-01-15', "Path": '/home', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'b1', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'b2', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "Anomaly Type": "N/A" },
+        { "Row ID": 'b3', "Week": '2024-01-22', "Path": '/products', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'b4', "Week": '2024-01-22', "Path": '/products', "Journey Type": null, "Team": "India", "Business Unit": "sbs", "Device": "desktop", "Completed": "no", "Hard Anomaly": "true", "Anomaly Type": "N/A" },
+        { "Row ID": 'c1', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Basic", "Team": "US", "Business Unit": "Consumer", "Device": "mobile", "Completed": "yes", "Hard Anomaly": "false", "Anomaly Type": "N/A" },
+        { "Row ID": 'c2', "Week": '2024-01-29', "Path": '/checkout', "Journey Type": "Upgraded", "Team": "India", "Business Unit": "PL", "Device": "PC", "Completed": "no", "Hard Anomaly": "true", "Anomaly Type": "N/A" }
+    ];
+
+    // ==================== MAIN APPLICATION ====================
+    class AnomalyVirtualGridApp {
+        constructor() {
+            this.allData = [...SAMPLE_DATA];
+            this.filteredData = [...this.allData];
+            this.gridState = { 
+                filters: {}, 
+                sortColumn: 'Row ID', 
+                sortDirection: 'asc' 
+            };
+            this.virtualScroller = null;
+            this.init();
+        }
+        
+        init() {
+            // Initialize filters
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                const uniqueValues = [...new Set(this.allData.map(row => String(row[col])))];
+                this.gridState.filters[col] = new Set(uniqueValues);
+            });
+            
+            this.setupVirtualScroller();
+            this.setupEventListeners();
+            this.updateGridView();
+            
+            UIHelpers.showToast('Virtual scrolling enabled - Try generating 1000 rows!', 'success');
+        }
+        
+        setupVirtualScroller() {
+            this.virtualScroller = new VirtualScroller({
+                viewport: document.getElementById('virtual-scroll-viewport'),
+                content: document.getElementById('virtual-scroll-content'),
+                itemsContainer: document.getElementById('virtual-scroll-items'),
+                data: this.filteredData,
+                rowHeight: CONFIG.ROW_HEIGHT,
+                bufferSize: CONFIG.BUFFER_SIZE,
+                renderItem: (item, index) => this.renderRow(item, index)
+            });
+        }
+        
+        setupEventListeners() {
+            // Multi-select dropdowns
+            document.addEventListener('click', e => {
+                const button = e.target.closest('.multi-select-button');
+                if (button) {
+                    e.stopPropagation();
+                    const menu = button.nextElementSibling;
+                    const isOpen = menu.classList.contains('show');
+                    document.querySelectorAll('.multi-select-menu').forEach(m => m.classList.remove('show'));
+                    if (!isOpen) menu.classList.add('show');
+                } else if (!e.target.closest('.multi-select-dropdown')) {
+                    document.querySelectorAll('.multi-select-menu').forEach(menu => menu.classList.remove('show'));
+                }
+            });
+            
+            // Filter changes
+            document.addEventListener('change', e => {
+                if (e.target.classList.contains('multi-select-checkbox')) {
+                    this.handleFilterChange(e.target);
+                }
+            });
+            
+            // Sort headers
+            document.addEventListener('click', e => {
+                if (e.target.classList.contains('sortable-header')) {
+                    this.handleSort(e.target.dataset.column);
+                }
+            });
+            
+            // Generate large dataset
+            document.getElementById('generate-large-dataset').addEventListener('click', () => {
+                this.generateLargeDataset(1000);
+            });
+            
+            // Export CSV
+            document.getElementById('export-csv-btn').addEventListener('click', () => {
+                DataExporter.exportToCSV(this.filteredData, `virtual_scroll_export_${Date.now()}.csv`);
+            });
+            
+            // Reset filters
+            document.getElementById('reset-filters').addEventListener('click', () => {
+                this.resetAllFilters();
+            });
+        }
+        
+        handleFilterChange(checkbox) {
+            const column = checkbox.dataset.column;
+            const value = checkbox.value;
+            
+            if (!this.gridState.filters[column]) {
+                this.gridState.filters[column] = new Set();
+            }
+            
+            if (value === '__ALL__') {
+                const allBoxes = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`);
+                if (checkbox.checked) {
+                    allBoxes.forEach(cb => {
+                        cb.checked = true;
+                        this.gridState.filters[column].add(cb.value);
+                    });
+                } else {
+                    this.gridState.filters[column].clear();
+                    allBoxes.forEach(cb => cb.checked = false);
+                }
+            } else {
+                if (checkbox.checked) {
+                    this.gridState.filters[column].add(value);
+                } else {
+                    this.gridState.filters[column].delete(value);
+                }
+            }
+            
+            // Update "Select All" checkbox
+            const totalBoxes = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`).length;
+            const allCheckbox = document.querySelector(`.multi-select-checkbox[data-column="${column}"][value="__ALL__"]`);
+            if (allCheckbox) {
+                allCheckbox.checked = this.gridState.filters[column].size === totalBoxes;
+            }
+            
+            this.updateMultiSelectDisplay(column);
+            this.updateGridView();
+        }
+        
+        updateMultiSelectDisplay(column) {
+            const span = document.querySelector(`.multi-select-button[data-column="${column}"] span`);
+            if (!span) return;
+            
+            const count = this.gridState.filters[column]?.size || 0;
+            const total = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`).length;
+            
+            if (count === 0) {
+                span.textContent = 'None';
+                span.className = 'text-muted';
+            } else if (count === total) {
+                span.textContent = 'All';
+                span.className = '';
+            } else {
+                span.textContent = `${count} selected`;
+                span.className = 'selected-count';
+            }
+        }
+        
+        handleSort(column) {
+            if (this.gridState.sortColumn === column) {
+                this.gridState.sortDirection = this.gridState.sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                this.gridState.sortColumn = column;
+                this.gridState.sortDirection = 'asc';
+            }
+            
+            // Update header arrows
+            document.querySelectorAll('.sortable-header').forEach(th => {
+                const col = th.dataset.column;
+                const arrow = this.gridState.sortColumn === col 
+                    ? (this.gridState.sortDirection === 'asc' ? ' ▲' : ' ▼') 
+                    : '';
+                th.textContent = col + arrow;
+            });
+            
+            this.updateGridView();
+        }
+        
+        updateGridView() {
+            UIHelpers.showLoading('Filtering and sorting...');
+            
+            setTimeout(() => {
+                // Filter data
+                this.filteredData = this.filterData(this.allData);
+                
+                // Sort data
+                this.filteredData = this.sortData(this.filteredData);
+                
+                // Update virtual scroller
+                this.virtualScroller.setData(this.filteredData);
+                
+                // Update summary
+                const summary = document.getElementById('grid-summary');
+                summary.textContent = `Showing ${this.filteredData.length} of ${this.allData.length} total records`;
+                
+                UIHelpers.hideLoading();
+            }, 50);
+        }
+        
+        filterData(data) {
+            return data.filter(row => {
+                return Object.entries(this.gridState.filters).every(([col, values]) => {
+                    if (!values || values.size === 0) return false;
+                    return values.has(String(row[col]));
+                });
+            });
+        }
+        
+        sortData(data) {
+            return [...data].sort((a, b) => {
+                const colName = this.gridState.sortColumn;
+                const vA = a[colName];
+                const vB = b[colName];
+                
+                if (vA === null) return 1;
+                if (vB === null) return -1;
+                
+                if (vA < vB) return this.gridState.sortDirection === 'asc' ? -1 : 1;
+                if (vA > vB) return this.gridState.sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        
+        renderRow(item, index) {
+            const rowClass = index % 2 === 0 ? '' : '';
+            return `<tr class="${rowClass}">
+                <td>${escapeHtml(item["Row ID"])}</td>
+                <td>${escapeHtml(item.Week)}</td>
+                <td>${escapeHtml(item.Path)}</td>
+                <td>${item["Journey Type"] ? escapeHtml(item["Journey Type"]) : '<em>-</em>'}</td>
+                <td>${escapeHtml(item.Team)}</td>
+                <td>${escapeHtml(item["Business Unit"])}</td>
+                <td>${item.Device ? escapeHtml(item.Device) : '<em>-</em>'}</td>
+                <td>${escapeHtml(item.Completed)}</td>
+                <td>${escapeHtml(item["Hard Anomaly"])}</td>
+                <td><em>${escapeHtml(item["Anomaly Type"])}</em></td>
+            </tr>`;
+        }
+        
+        generateLargeDataset(count) {
+            UIHelpers.showLoading(`Generating ${count} rows...`);
+            
+            setTimeout(() => {
+                const paths = ['/home', '/products', '/checkout', '/cart', '/profile', '/settings', '/about', '/contact'];
+                const journeyTypes = ['Basic', 'Upgraded', 'Premium', null];
+                const teams = ['US', 'India'];
+                const businessUnits = ['Consumer', 'PL', 'sbs'];
+                const devices = ['mobile', 'PC', 'desktop', 'tablet', null];
+                const completed = ['yes', 'no'];
+                const hardAnomaly = ['true', 'false'];
+                const weeks = ['2024-01-15', '2024-01-22', '2024-01-29', '2024-02-05', '2024-02-12'];
+                
+                const newData = [];
+                for (let i = 0; i < count; i++) {
+                    newData.push({
+                        "Row ID": `gen_${i + 1}`,
+                        "Week": weeks[Math.floor(Math.random() * weeks.length)],
+                        "Path": paths[Math.floor(Math.random() * paths.length)],
+                        "Journey Type": journeyTypes[Math.floor(Math.random() * journeyTypes.length)],
+                        "Team": teams[Math.floor(Math.random() * teams.length)],
+                        "Business Unit": businessUnits[Math.floor(Math.random() * businessUnits.length)],
+                        "Device": devices[Math.floor(Math.random() * devices.length)],
+                        "Completed": completed[Math.floor(Math.random() * completed.length)],
+                        "Hard Anomaly": hardAnomaly[Math.floor(Math.random() * hardAnomaly.length)],
+                        "Anomaly Type": "N/A"
+                    });
+                }
+                
+                this.allData = [...SAMPLE_DATA, ...newData];
+                this.resetAllFilters();
+                
+                UIHelpers.hideLoading();
+                UIHelpers.showToast(`Successfully generated ${count} rows! Try scrolling.`, 'success');
+            }, 100);
+        }
+        
+        resetAllFilters() {
+            CONFIG.FILTERABLE_COLUMNS.forEach(col => {
+                const uniqueValues = [...new Set(this.allData.map(row => String(row[col])))];
+                this.gridState.filters[col] = new Set(uniqueValues);
+                
+                // Update UI
+                const allCheckbox = document.querySelector(`.multi-select-checkbox[data-column="${col}"][value="__ALL__"]`);
+                if (allCheckbox) allCheckbox.checked = true;
+                
+                document.querySelectorAll(`.multi-select-checkbox[data-column="${col}"]:not([value="__ALL__"])`).forEach(cb => {
+                    cb.checked = true;
+                });
+                
+                this.updateMultiSelectDisplay(col);
+            });
+            
+            this.gridState.sortColumn = 'Row ID';
+            this.gridState.sortDirection = 'asc';
+            
+            this.updateGridView();
+            UIHelpers.showToast('All filters reset', 'info');
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    let app;
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            app = new AnomalyVirtualGridApp();
+            window.app = app;
+        } catch (error) {
+            console.error('Failed to start application:', error);
+            alert('Failed to start application. Please refresh the page.');
+        }
+    });
+    </script>
+</body>
+</html>
