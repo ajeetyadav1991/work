@@ -1052,7 +1052,10 @@
             document.querySelectorAll('#details-table-body tr').forEach(r => r.classList.remove('table-primary'));
             row.classList.add('table-primary');
             this.updateControlPanelState();
-            if (!this.isRowInvestigated(rowId)) this.loadGranularDetails(this.selectedRowForInteraction);
+            
+            //Always load granular details regardless of investigation status
+            //if (!this.isRowInvestigated(rowId)) this.loadGranularDetails(this.selectedRowForInteraction);
+            this.loadGranularDetails(this.selectedRowForInteraction);
         }
         
         updateControlPanelState() {
