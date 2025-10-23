@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DPN Anomaly Detection - Production v11.4 (Final)</title>
+    <title>DPN Anomaly Detection - Production v12.0</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🚀</text></svg>">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -152,9 +152,11 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .confirmation-content, .irev-content {
             background: white; padding: 2rem; border-radius: .75rem;
-            width: 100%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0,0,0,0.3);
             transform: scale(0.95);
             animation: scaleIn 0.2s ease-out forwards;
+            max-height: 90vh;
+            overflow-y: auto;
         }
         @keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
         .irev-content { max-width: 500px; }
@@ -166,13 +168,61 @@
             padding: 15px; margin: 20px 0; font-size: 1em; border-radius: 4px;
         }
         #week-filter-container .multi-select-menu { max-height: 220px; overflow-y: auto; }
-        #explorer-pane .row.g-4 { display: flex; align-items: stretch; flex-wrap: wrap; }
         .control-section {
             border: 1px solid #dee2e6; border-radius: .5rem;
             padding: 1.5rem; background-color: #f8f9fa; height: 100%;
         }
         .chart-container {
             position: relative; margin: auto; height: 40vh; width: 100%;
+        }
+        .irev-hint {
+            font-size: 0.75rem;
+            color: #6c757d;
+            font-style: italic;
+            display: block;
+            margin-top: 0.25rem;
+        }
+        .validation-error {
+            color: #dc3545;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+            display: none;
+        }
+        .validation-error.show {
+            display: block;
+        }
+
+        /* Responsive Enhancements */
+        @media (max-width: 768px) {
+            .header h1 { font-size: 1.5rem; }
+            .header .lead { font-size: 0.9rem; }
+            .panel { padding: 15px; min-height: auto; }
+            .filter-panel { padding: 0.75rem; }
+            .filter-panel .col-md-2 { margin-bottom: 1rem; }
+            .export-buttons { display: flex; flex-direction: column; gap: 0.5rem; }
+            .export-buttons .btn { margin-left: 0; width: 100%; }
+            .batch-toolbar { padding: 0.75rem; }
+            .batch-toolbar .d-flex { flex-direction: column; gap: 1rem; }
+            .batch-toolbar .btn { width: 100%; margin: 0.25rem 0 !important; }
+            .batch-toolbar select { width: 100% !important; margin: 0.25rem 0; }
+            .control-section { padding: 1rem; margin-bottom: 1rem; }
+            .confirmation-content, .irev-content { padding: 1.5rem; width: 95%; }
+            .warning-icon { font-size: 2.5rem; }
+            .chart-container { height: 30vh; }
+            .table { font-size: 0.85rem; }
+            .path-badge { font-size: 0.75rem; padding: 0.2rem 0.5rem; }
+            .week-badge { font-size: 0.75rem; }
+        }
+
+        @media (max-width: 576px) {
+            .nav-tabs .nav-link { font-size: 0.85rem; padding: 0.5rem 0.75rem; }
+            .table-responsive { font-size: 0.8rem; }
+        }
+
+        /* Tablet responsive */
+        @media (min-width: 768px) and (max-width: 1024px) {
+            .filter-panel .col-md-2 { flex: 0 0 50%; max-width: 50%; }
+            .chart-container { height: 35vh; }
         }
     </style>
 </head>
@@ -191,7 +241,7 @@
         <p class="lead mb-0">Fully Automated Anomaly Investigation & Analysis</p>
     </div>
 
-    <div class="container-fluid px-4">
+    <div class="container-fluid px-2 px-md-4">
         <ul class="nav nav-tabs mb-3" id="mainTab" role="tablist">
             <li class="nav-item" role="presentation">
                 <button class="nav-link active" id="explorer-tab" data-bs-toggle="tab" data-bs-target="#explorer-pane" type="button" role="tab">Anomaly Inventory</button>
@@ -212,10 +262,10 @@
 
         <div class="tab-content" id="mainTabContent">
             <div class="tab-pane fade show active" id="explorer-pane" role="tabpanel">
-                <div class="row g-4">
-                    <div class="col-md-3">
+                <div class="row g-2 g-md-4">
+                    <div class="col-12 col-lg-3">
                         <div class="panel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
                                 <h4 class="mb-0">Path Explorer</h4>
                                 <button class="btn btn-sm btn-outline-primary" id="enter-batch-mode-btn" title="Select multiple records">Batch Mode</button>
                             </div>
@@ -234,26 +284,26 @@
                         </div>
                     </div>
 
-                    <div class="col-md-9">
+                    <div class="col-12 col-lg-9">
                         <div class="panel">
                             <div id="batch-toolbar" class="batch-toolbar" style="display: none;">
-                                <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                                     <div>
                                         <span id="batch-count" class="fw-bold fs-5">0 selected</span>
-                                        <button class="btn btn-sm btn-light ms-3" id="batch-select-all">Select All on Page</button>
+                                        <button class="btn btn-sm btn-light ms-2" id="batch-select-all">Select All on Page</button>
                                         <button class="btn btn-sm btn-light ms-1" id="batch-deselect-all">Deselect All</button>
                                     </div>
-                                    <div>
-                                        <select id="batch-classification-select" class="form-select form-select-sm d-inline-block" style="width: auto;">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <select id="batch-classification-select" class="form-select form-select-sm" style="min-width: 200px;">
                                             <option value="">Choose classification...</option>
                                         </select>
-                                        <button class="btn btn-sm btn-success ms-2" id="batch-apply-btn">Apply to Selected</button>
-                                        <button class="btn btn-sm btn-secondary ms-1" id="exit-batch-mode-btn">Exit Batch Mode</button>
+                                        <button class="btn btn-sm btn-success" id="batch-apply-btn">Apply to Selected</button>
+                                        <button class="btn btn-sm btn-secondary" id="exit-batch-mode-btn">Exit Batch Mode</button>
                                     </div>
                                 </div>
                             </div>
 
-                            <div class="d-flex justify-content-end align-items-start mb-4">
+                            <div class="d-flex justify-content-end align-items-start mb-3">
                                 <div class="export-buttons">
                                     <button class="btn btn-sm btn-outline-danger" id="reset-all-filters-btn" title="Reset grid filters">🔄 Reset Filters</button>
                                     <button class="btn btn-sm btn-outline-success" id="export-csv-btn" title="Export to CSV">📊 Export CSV</button>
@@ -316,7 +366,9 @@
         RESPONSIBLE_TEAMS: ["tech-team-alpha@company.com", "engineering-prod-support@company.com", "marketing-analytics@company.com", "data-integrity-team@company.com", "platform-services@company.com"],
         DISPLAY_COLUMNS: ["Row ID", "Week", "Path", "Journey Type", "Team", "Business Unit", "Device", "Completed", "Hard Anomaly", "Anomaly Type", "iREV Value ($)", "Team Responsible to Fix", "Resolution Date"],
         LOG_DISPLAY_COLUMNS: ["Row ID", "Week", "Path", "Anomaly Type", "iREV Value ($)", "Investigation Timestamp", "Team Responsible", "Resolution Date", "Resolution Timestamp"],
-        DEBOUNCE_DELAY: 150, 
+        DEBOUNCE_DELAY: 150,
+        IREV_MAX_DECIMALS: 5,
+        IREV_DEFAULT_VALUE: '0.0000'
     };
 
     // ==================== PERFORMANCE UTILITIES ====================
@@ -327,6 +379,73 @@
                 clearTimeout(timeoutId);
                 timeoutId = setTimeout(() => func.apply(this, args), delay);
             };
+        }
+    }
+
+    // ==================== VALIDATION UTILITIES ====================
+    class ValidationUtils {
+        static validateIrevValue(value) {
+            if (value === null || value === undefined || value.trim() === '') {
+                return { valid: true, value: CONFIG.IREV_DEFAULT_VALUE };
+            }
+            
+            const numValue = parseFloat(value);
+            if (isNaN(numValue) || numValue < 0) {
+                return { valid: false, error: 'iREV value must be a positive number' };
+            }
+            
+            const decimalMatch = value.match(/\.(\d+)$/);
+            if (decimalMatch && decimalMatch[1].length > CONFIG.IREV_MAX_DECIMALS) {
+                return { 
+                    valid: false, 
+                    error: `iREV value cannot have more than ${CONFIG.IREV_MAX_DECIMALS} decimal places` 
+                };
+            }
+            
+            return { valid: true, value: numValue.toFixed(4) };
+        }
+
+        static validateResolutionDate(dateString) {
+            if (!dateString) {
+                return { valid: false, error: 'Resolution date is required' };
+            }
+            
+            const date = new Date(dateString);
+            const year = date.getFullYear();
+            
+            if (year < 1000 || year > 9999) {
+                return { valid: false, error: 'Year must be between 1000 and 9999' };
+            }
+            
+            return { valid: true, value: dateString };
+        }
+
+        static showFieldError(fieldId, errorMessage) {
+            const field = document.getElementById(fieldId);
+            const errorDiv = document.getElementById(`${fieldId}-error`);
+            
+            if (field) {
+                field.classList.add('is-invalid');
+            }
+            
+            if (errorDiv) {
+                errorDiv.textContent = errorMessage;
+                errorDiv.classList.add('show');
+            }
+        }
+
+        static clearFieldError(fieldId) {
+            const field = document.getElementById(fieldId);
+            const errorDiv = document.getElementById(`${fieldId}-error`);
+            
+            if (field) {
+                field.classList.remove('is-invalid');
+            }
+            
+            if (errorDiv) {
+                errorDiv.textContent = '';
+                errorDiv.classList.remove('show');
+            }
         }
     }
 
@@ -410,9 +529,10 @@
                     <div class="irev-content">
                         <h4 class="mb-3">Enter Batch iREV Value</h4>
                         <p class="text-muted small mb-3">
-                            Enter an iREV value to apply to all selected unclassified rows. This is optional and will default to 0 if left blank.
+                            Enter an iREV value to apply to all selected unclassified rows. This is optional and will default to $0.00 if left blank.
                         </p>
-                        <input type="number" id="batch-irev-input" class="form-control" placeholder="e.g., 450.50" min="0" step="0.0001">
+                        <input type="number" id="batch-irev-input" class="form-control" placeholder="e.g., 450.5" min="0" step="0.00001">
+                        <div id="batch-irev-error" class="validation-error"></div>
                         <div class="d-flex justify-content-end gap-2 mt-4">
                             <button class="btn btn-secondary" id="cancel-irev">Cancel</button>
                             <button class="btn btn-primary" id="submit-irev">Submit</button>
@@ -430,19 +550,16 @@
 
                 const handleSubmit = () => {
                     const inputValue = input.value.trim();
-                    if (inputValue === '') {
-                        cleanup();
-                        resolve(0.00); // Default to 0 if blank
+                    const validation = ValidationUtils.validateIrevValue(inputValue);
+                    
+                    if (!validation.valid) {
+                        ValidationUtils.showFieldError('batch-irev-input', validation.error);
+                        UIHelpers.showToast(validation.error, 'error');
                         return;
                     }
-
-                    const parsedValue = parseFloat(inputValue);
-                    if (isNaN(parsedValue) || parsedValue < 0) {
-                        UIHelpers.showToast('Invalid iREV value. Please enter a positive number.', 'error');
-                        return;
-                    }
+                    
                     cleanup();
-                    resolve(parsedValue);
+                    resolve(parseFloat(validation.value));
                 };
 
                 const handleCancel = () => {
@@ -458,6 +575,10 @@
                         handleCancel();
                     }
                 };
+
+                input.addEventListener('input', () => {
+                    ValidationUtils.clearFieldError('batch-irev-input');
+                });
 
                 document.getElementById('submit-irev').addEventListener('click', handleSubmit);
                 document.getElementById('cancel-irev').addEventListener('click', handleCancel);
@@ -487,7 +608,7 @@
                             ${resolutionInfo}
                             <div class="text-center mt-3 fw-bold text-uppercase">⚠️ THIS ACTION CANNOT BE UNDONE ⚠️</div>
                         </div>
-                        <div class="d-flex justify-content-between gap-3">
+                        <div class="d-flex justify-content-between gap-3 flex-wrap">
                             <button class="btn btn-secondary btn-lg flex-fill" id="cancel-action">Cancel</button>
                             <button class="btn btn-danger btn-lg flex-fill" id="confirm-action">${escapeHtml(options.confirmText)}</button>
                         </div>
@@ -553,14 +674,14 @@
             const allPaths = new Set(rowsToProcess.map(r => r.Path));
             
             const confirmed = await UIHelpers.showConfirmationDialog({
-                title: 'Are you sure you want to classify these anomalies?', path: Array.from(allPaths).join(', '), classification, irev: irevValue,
+                title: 'Are you sure you want to classify these anomalies?', path: Array.from(allPaths).join(', '), classification, irev: irevValue.toFixed(4),
                 weeks: Array.from(allWeeks).sort(), affectedRows: rowsToProcess.length, confirmText: 'Yes, Submit Anomaly Type'
             });
             if (!confirmed) return;
             
             UIHelpers.showLoading(`Processing ${rowsToProcess.length} row(s)...`);
             try {
-                for (const row of rowsToProcess) { await app.saveInvestigation(row, classification, irevValue); }
+                for (const row of rowsToProcess) { await app.saveInvestigation(row, classification, irevValue.toFixed(4)); }
                 this.exitBatchMode();
                 UIHelpers.showToast(`Successfully classified ${rowsToProcess.length} row(s)`, 'success');
             } catch (error) {
@@ -674,6 +795,14 @@
                     document.getElementById('submit-investigation-btn').disabled = !e.target.value;
                 }
             });
+
+            detailsContainer.addEventListener('input', e => {
+                if (e.target.id === 'irev-value-input') {
+                    ValidationUtils.clearFieldError('irev-value-input');
+                } else if (e.target.id === 'resolution-date-input') {
+                    ValidationUtils.clearFieldError('resolution-date-input');
+                }
+            });
             
             detailsContainer.addEventListener('click', e => {
                 const target = e.target;
@@ -684,12 +813,6 @@
                 else if (target.id === 'close-case-btn') { this.handleResolutionSubmit(); } 
                 else if (target.classList.contains('batch-checkbox')) { this.batchOps.toggle(target.dataset.rowId); this.updateGridView(); }
             });
-            
-            detailsContainer.addEventListener('blur', e => {
-                if (e.target.id === 'resolution-date-input') {
-                    this.validateResolutionYear(e.target);
-                }
-            }, true);
 
             document.getElementById('export-csv-btn').addEventListener('click', () => { const data = this.getExportData(); DataExporter.exportToCSV(data, `filtered_view_${new Date().toISOString().split('T')[0]}.csv`); });
             document.getElementById('export-json-btn').addEventListener('click', () => { const data = this.getExportData(); DataExporter.exportToJSON(data, `filtered_view_${new Date().toISOString().split('T')[0]}.json`); });
@@ -705,7 +828,7 @@
                 const irevValue = await UIHelpers.showIrevPrompt();
                 if (irevValue === null) return;
 
-                await this.batchOps.applyBatch(classification, irevValue.toFixed(2));
+                await this.batchOps.applyBatch(classification, irevValue);
             });
             document.getElementById('analytics-tab').addEventListener('shown.bs.tab', () => this.renderAnalytics());
             document.getElementById('granular-details-content').addEventListener('click', e => { const link = e.target.closest('.visitor-id-link'); if (link?.dataset.visitorId) this.renderSessionAnalysis(link.dataset.visitorId); });
@@ -715,7 +838,13 @@
             return this.filterData(this.currentDetailRecords).map(rec => {
                 const { granular_details, ...rest } = rec;
                 const logEntry = this.findLogEntry(rec["Row ID"]);
-                return { ...rest, "Anomaly Type": logEntry?.classification || "N/A", "iREV Value ($)": logEntry?.irev_value || "N/A", "Team Responsible to Fix": logEntry?.team_responsible || "N/A", "Resolution Date": logEntry?.resolution_date || "N/A" };
+                return { 
+                    ...rest, 
+                    "Anomaly Type": logEntry?.classification || "N/A", 
+                    "iREV Value ($)": logEntry ? `${parseFloat(logEntry.irev_value).toFixed(2)}` : "N/A", 
+                    "Team Responsible to Fix": logEntry?.team_responsible || "N/A", 
+                    "Resolution Date": logEntry?.resolution_date || "N/A" 
+                };
             });
         }
 
@@ -745,6 +874,14 @@
                 document.querySelectorAll(`.multi-select-checkbox[data-column="${col}"]:not([value="__ALL__"])`).forEach(cb => { cb.checked = true; });
                 this.updateMultiSelectDisplay(col);
             });
+
+            // Reset new filters
+            this.gridState.filters["__InvestigationPhase"] = new Set(["Investigation Phase Open", "Investigation Phase Closed"]);
+            this.gridState.filters["__ResolutionPhase"] = new Set(["Resolution Phase Open", "Resolution Phase Closed"]);
+            document.querySelectorAll('.multi-select-checkbox[data-column="__InvestigationPhase"], .multi-select-checkbox[data-column="__ResolutionPhase"]').forEach(cb => { cb.checked = true; });
+            this.updateMultiSelectDisplay("__InvestigationPhase");
+            this.updateMultiSelectDisplay("__ResolutionPhase");
+
             this.gridState.sortColumn = 'Row ID';
             this.gridState.sortDirection = 'asc';
             this.gridState.currentPage = 1;
@@ -781,7 +918,10 @@
                 else { this.gridState.filters[column].clear(); allBoxes.forEach(cb => cb.checked = false); }
             } else { checkbox.checked ? this.gridState.filters[column].add(value) : this.gridState.filters[column].delete(value); }
             const totalBoxes = document.querySelectorAll(`.multi-select-checkbox[data-column="${column}"]:not([value="__ALL__"])`).length;
-            document.querySelector(`.multi-select-checkbox[data-column="${column}"][value="__ALL__"]`).checked = this.gridState.filters[column].size === totalBoxes;
+            const allCheckbox = document.querySelector(`.multi-select-checkbox[data-column="${column}"][value="__ALL__"]`);
+            if (allCheckbox) {
+                allCheckbox.checked = this.gridState.filters[column].size === totalBoxes;
+            }
             this.updateMultiSelectDisplay(column);
         }
         
@@ -824,18 +964,71 @@
             let filterPanelHTML = '<div class="filter-panel mb-3 row g-3">';
             for (const [column, values] of Object.entries(filterOptions)) {
                 const columnId = column.replace(/\s+/g, '_');
-                filterPanelHTML += `<div class="col-md-2"><label class="form-label fw-bold small">${escapeHtml(column)}</label><div class="multi-select-dropdown"><div class="multi-select-button" data-column="${escapeHtml(column)}" role="button"><span>All</span></div><div class="multi-select-menu" role="listbox"><div class="multi-select-option all-option"><input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="__ALL__" id="all-${columnId}" checked><label for="all-${columnId}" style="cursor:pointer;flex:1;">Select All</label></div>${values.map((v, i) => `<div class="multi-select-option"><input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="${escapeHtml(String(v))}" id="${columnId}-${i}" checked><label for="${columnId}-${i}" style="cursor:pointer;flex:1;">${v === null ? '(Blank)' : escapeHtml(String(v))}</label></div>`).join('')}</div></div></div>`;
+                filterPanelHTML += `<div class="col-12 col-sm-6 col-md-4 col-lg-2"><label class="form-label fw-bold small">${escapeHtml(column)}</label><div class="multi-select-dropdown"><div class="multi-select-button" data-column="${escapeHtml(column)}" role="button"><span>All</span></div><div class="multi-select-menu" role="listbox"><div class="multi-select-option all-option"><input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="__ALL__" id="all-${columnId}" checked><label for="all-${columnId}" style="cursor:pointer;flex:1;">Select All</label></div>${values.map((v, i) => `<div class="multi-select-option"><input type="checkbox" class="multi-select-checkbox" data-column="${escapeHtml(column)}" value="${escapeHtml(String(v))}" id="${columnId}-${i}" checked><label for="${columnId}-${i}" style="cursor:pointer;flex:1;">${v === null ? '(Blank)' : escapeHtml(String(v))}</label></div>`).join('')}</div></div></div>`;
             }
+
+            // ==================== NEW FILTER HTML INJECTION ====================
+            filterPanelHTML += `
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                <label class="form-label fw-bold small">Investigation Phase</label>
+                <div class="multi-select-dropdown">
+                    <div class="multi-select-button" data-column="__InvestigationPhase" role="button"><span>All</span></div>
+                    <div class="multi-select-menu" role="listbox">
+                        <div class="multi-select-option all-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__InvestigationPhase" value="__ALL__" id="all-investigation-phase" checked>
+                            <label for="all-investigation-phase" style="cursor:pointer;flex:1;">Select All</label>
+                        </div>
+                        <div class="multi-select-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__InvestigationPhase" value="Investigation Phase Open" id="investigation-open" checked>
+                            <label for="investigation-open" style="cursor:pointer;flex:1;"><span class="badge bg-warning text-dark">🟡 Open</span></label>
+                        </div>
+                        <div class="multi-select-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__InvestigationPhase" value="Investigation Phase Closed" id="investigation-closed" checked>
+                            <label for="investigation-closed" style="cursor:pointer;flex:1;"><span class="badge bg-success">🟢 Closed</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-2">
+                <label class="form-label fw-bold small">Resolution Phase</label>
+                <div class="multi-select-dropdown">
+                    <div class="multi-select-button" data-column="__ResolutionPhase" role="button"><span>All</span></div>
+                    <div class="multi-select-menu" role="listbox">
+                        <div class="multi-select-option all-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__ResolutionPhase" value="__ALL__" id="all-resolution-phase" checked>
+                            <label for="all-resolution-phase" style="cursor:pointer;flex:1;">Select All</label>
+                        </div>
+                        <div class="multi-select-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__ResolutionPhase" value="Resolution Phase Open" id="resolution-open" checked>
+                            <label for="resolution-open" style="cursor:pointer;flex:1;"><span class="badge bg-warning text-dark">🟡 Open</span></label>
+                        </div>
+                        <div class="multi-select-option">
+                            <input type="checkbox" class="multi-select-checkbox" data-column="__ResolutionPhase" value="Resolution Phase Closed" id="resolution-closed" checked>
+                            <label for="resolution-closed" style="cursor:pointer;flex:1;"><span class="badge bg-success">🟢 Closed</span></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            `;
+            // ==================== END OF INJECTION ====================
+
             filterPanelHTML += '</div>';
             
             document.getElementById('details-container').innerHTML = `${filterPanelHTML}
                 <div id="grid-summary" class="text-muted small mb-2"></div><div class="table-responsive" style="max-height: 50vh; overflow-y: auto;"><table class="table table-hover table-sm"><thead id="details-table-head" class="sticky-top bg-light"></thead><tbody id="details-table-body"></tbody></table></div><nav><div id="pagination-controls" class="d-flex justify-content-center mt-3"></div></nav>
-                <div id="controls-container" class="mt-4 pt-3 border-top"><div id="controls-alert-spot" class="mb-3"></div><div class="row g-4">
-                    <div class="col-md-6"><div class="control-section"><h5 class="mb-3">Outcome of Investigation Phase</h5><div class="mb-3"><label for="classification-dropdown" class="form-label">Choose Anomaly Type</label><select id="classification-dropdown" class="form-select" disabled><option value="">Choose a classification...</option>${CONFIG.CLASSIFICATION_CATEGORIES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></div><div class="mb-3"><label for="irev-value-input" class="form-label">Anomaly iREV value (in $)</label><input type="number" id="irev-value-input" class="form-control" placeholder="e.g., 450.50" min="0" step="0.0001" disabled></div><div class="d-flex justify-content-end"><button id="submit-investigation-btn" class="btn btn-primary" disabled>Submit Anomaly Type</button></div></div></div>
-                    <div class="col-md-6"><div class="control-section"><h5 class="mb-3">Outcome of Resolution Phase</h5><div class="mb-3"><label for="team-responsible-select" class="form-label">Team Responsible to Fix</label><select id="team-responsible-select" class="form-select" disabled><option value="">Select team email...</option>${CONFIG.RESPONSIBLE_TEAMS.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}</select></div><div class="mb-3"><label for="resolution-date-input" class="form-label">Date of Resolution</label><input type="date" id="resolution-date-input" class="form-control" disabled></div><div class="d-flex justify-content-end"><button id="close-case-btn" class="btn btn-success" disabled>Close Case</button></div></div></div>
+                <div id="controls-container" class="mt-4 pt-3 border-top"><div id="controls-alert-spot" class="mb-3"></div><div class="row g-3 g-md-4">
+                    <div class="col-12 col-lg-6"><div class="control-section"><h5 class="mb-3">Outcome of Investigation Phase</h5><div class="mb-3"><label for="classification-dropdown" class="form-label">Choose Anomaly Type</label><select id="classification-dropdown" class="form-select" disabled><option value="">Choose a classification...</option>${CONFIG.CLASSIFICATION_CATEGORIES.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join('')}</select></div><div class="mb-3"><label for="irev-value-input" class="form-label">Anomaly iREV value (in $)<small class="irev-hint">This is optional and will default to 0 if left blank</small></label><input type="number" id="irev-value-input" class="form-control" placeholder="e.g., 450.5" min="0" step="0.00001" disabled><div id="irev-value-input-error" class="validation-error"></div></div><div class="d-flex justify-content-end"><button id="submit-investigation-btn" class="btn btn-primary" disabled>Submit Anomaly Type</button></div></div></div>
+                    <div class="col-12 col-lg-6"><div class="control-section"><h5 class="mb-3">Outcome of Resolution Phase</h5><div class="mb-3"><label for="team-responsible-select" class="form-label">Team Responsible to Fix</label><select id="team-responsible-select" class="form-select" disabled><option value="">Select team email...</option>${CONFIG.RESPONSIBLE_TEAMS.map(t => `<option value="${escapeHtml(t)}">${escapeHtml(t)}</option>`).join('')}</select></div><div class="mb-3"><label for="resolution-date-input" class="form-label">Date of Resolution</label><input type="date" id="resolution-date-input" class="form-control" min="1000-01-01" max="9999-12-31" disabled><div id="resolution-date-input-error" class="validation-error"></div></div><div class="d-flex justify-content-end"><button id="close-case-btn" class="btn btn-success" disabled>Close Case</button></div></div></div>
                 </div></div>`;
             
             CONFIG.FILTERABLE_COLUMNS.forEach(col => { this.gridState.filters[col] = new Set(filterOptions[col].map(v => String(v))); });
+
+            // ==================== NEW FILTER STATE INITIALIZATION ====================
+            // Initialize filters for the new computed phase columns
+            this.gridState.filters["__InvestigationPhase"] = new Set(["Investigation Phase Open", "Investigation Phase Closed"]);
+            this.gridState.filters["__ResolutionPhase"] = new Set(["Resolution Phase Open", "Resolution Phase Closed"]);
+            // ==================== END OF INITIALIZATION ====================
+
             this.updateGridView();
         }
         
@@ -850,7 +1043,32 @@
             this.renderPaginationControls(total);
         }
         
-        filterData(data) { return data.filter(row => Object.entries(this.gridState.filters).every(([col, val]) => !val || val.size === 0 ? false : val.has(String(row[col])))); }
+        // ==================== MODIFIED filterData FUNCTION ====================
+        filterData(data) {
+            // 1. Augment data with computed phase properties
+            const augmentedData = data.map(row => {
+                const logEntry = this.findLogEntry(row["Row ID"]);
+                
+                const investigationPhase = (logEntry && logEntry.classification) 
+                    ? "Investigation Phase Closed" 
+                    : "Investigation Phase Open";
+                
+                const resolutionPhase = (logEntry && logEntry.team_responsible && logEntry.resolution_date) 
+                    ? "Resolution Phase Closed" 
+                    : "Resolution Phase Open";
+                
+                return {
+                    ...row,
+                    "__InvestigationPhase": investigationPhase,
+                    "__ResolutionPhase": resolutionPhase
+                };
+            });
+
+            // 2. Run the original filter logic on the augmented data
+            return augmentedData.filter(row => Object.entries(this.gridState.filters).every(([col, val]) => !val || val.size === 0 ? false : val.has(String(row[col]))));
+        }
+        // ==================== END OF MODIFIED FUNCTION ====================
+
         sortData(data) { return [...data].sort((a, b) => { const vA = a[this.gridState.sortColumn], vB = b[this.gridState.sortColumn]; if (vA < vB) return this.gridState.sortDirection === 'asc' ? -1 : 1; if (vA > vB) return this.gridState.sortDirection === 'asc' ? 1 : -1; return 0; }); }
         
         renderTablePage(data) {
@@ -875,7 +1093,7 @@
                 rowHTML += CONFIG.DISPLAY_COLUMNS.map(h => {
                     let cellValue = '<em>N/A</em>';
                     if (h === 'Anomaly Type') cellValue = logEntry ? escapeHtml(logEntry.classification) : '<em>N/A</em>';
-                    else if (h === 'iREV Value ($)') cellValue = logEntry ? `$${parseFloat(logEntry.irev_value).toFixed(2)}` : '<em>N/A</em>';
+                    else if (h === 'iREV Value ($)') cellValue = logEntry ? `${parseFloat(logEntry.irev_value).toFixed(2)}` : '<em>N/A</em>';
                     else if (h === 'Team Responsible to Fix') cellValue = logEntry?.team_responsible ? escapeHtml(logEntry.team_responsible) : '<em>N/A</em>';
                     else if (h === 'Resolution Date') cellValue = logEntry?.resolution_date ? escapeHtml(logEntry.resolution_date) : '<em>N/A</em>';
                     else cellValue = rec[h] === null ? '<em>(Blank)</em>' : escapeHtml(String(rec[h]));
@@ -892,7 +1110,7 @@
             const container = document.getElementById('pagination-controls');
             const totalPages = Math.ceil(totalRecords / CONFIG.ROWS_PER_PAGE);
             if (totalPages <= 1) { container.innerHTML = ''; return; }
-            let html = '<ul class="pagination pagination-sm">';
+            let html = '<ul class="pagination pagination-sm flex-wrap">';
             html += `<li class="page-item ${this.gridState.currentPage === 1 ? 'disabled' : ''}"><a class="page-link" data-page="${this.gridState.currentPage - 1}">Previous</a></li>`;
             for (let i = 1; i <= totalPages; i++) html += `<li class="page-item ${i === this.gridState.currentPage ? 'active' : ''}"><a class="page-link" data-page="${i}">${i}</a></li>`;
             html += `<li class="page-item ${this.gridState.currentPage === totalPages ? 'disabled' : ''}"><a class="page-link" data-page="${this.gridState.currentPage + 1}">Next</a></li>`;
@@ -923,7 +1141,10 @@
             document.querySelectorAll('#details-table-body tr').forEach(r => r.classList.remove('table-primary'));
             row.classList.add('table-primary');
             this.updateControlPanelState();
-            if (!this.isRowInvestigated(rowId)) this.loadGranularDetails(this.selectedRowForInteraction);
+            
+            //Always load granular details regardless of investigation status
+            //if (!this.isRowInvestigated(rowId)) this.loadGranularDetails(this.selectedRowForInteraction);
+            this.loadGranularDetails(this.selectedRowForInteraction);
         }
         
         updateControlPanelState() {
@@ -936,20 +1157,21 @@
             const teamSelect = document.getElementById('team-responsible-select'), dateInput = document.getElementById('resolution-date-input'), closeBtn = document.getElementById('close-case-btn');
 
             [classificationDropdown, teamSelect, irevInput, dateInput].forEach(el => el.value = "");
-            dateInput.classList.remove('is-invalid');
+            ValidationUtils.clearFieldError('irev-value-input');
+            ValidationUtils.clearFieldError('resolution-date-input');
             
             if (logEntry) {
                 classificationDropdown.value = logEntry.classification;
-                irevInput.value = logEntry.irev_value;
+                irevInput.value = parseFloat(logEntry.irev_value).toFixed(4);
                 [classificationDropdown, irevInput, submitBtn].forEach(el => el.disabled = true);
 
                 if (logEntry.resolution_date) {
-                    alertSpot.innerHTML = `<div class="alert alert-primary">The investigation for this row has been successfully closed.</div>`;
+                    alertSpot.innerHTML = `<div class="alert alert-primary">The investigation for this Path has been successfully closed.</div>`;
                     teamSelect.value = logEntry.team_responsible;
                     dateInput.value = logEntry.resolution_date;
                     [teamSelect, dateInput, closeBtn].forEach(el => el.disabled = true);
                 } else {
-                    alertSpot.innerHTML = `<div class="alert alert-info">This row has been classified as <strong>${escapeHtml(logEntry.classification)}</strong>. You may now proceed with the resolution.</div>`;
+                    alertSpot.innerHTML = `<div class="alert alert-info">This Path has been classified as <strong>${escapeHtml(logEntry.classification)}</strong>. You may now proceed with the Resolution Phase.</div>`;
                     [teamSelect, dateInput, closeBtn].forEach(el => el.disabled = false);
                     closeBtn.removeAttribute('data-bs-toggle');
                     closeBtn.removeAttribute('title');
@@ -959,24 +1181,9 @@
                 submitBtn.disabled = true; 
                 [teamSelect, dateInput, closeBtn].forEach(el => el.disabled = true);
                 closeBtn.setAttribute('data-bs-toggle', 'tooltip');
-                closeBtn.setAttribute('title', '⚠️ Please classify the Anomaly Type first');
+                closeBtn.setAttribute('title', '⚠️ Please classify the Anomaly Type first, if not done already');
                 new bootstrap.Tooltip(closeBtn);
             }
-        }
-
-        validateResolutionYear(element) {
-            if (!element.value) {
-                element.classList.remove('is-invalid');
-                return true;
-            }
-            const year = new Date(element.value).getFullYear();
-            if (year < 1000 || year > 9999) {
-                element.classList.add('is-invalid');
-                UIHelpers.showToast("Invalid year. Please enter a 4-digit year.", 'warning');
-                return false;
-            }
-            element.classList.remove('is-invalid');
-            return true;
         }
 
         findLogEntry(rowId) { if (this.logCache.has(rowId)) return this.logCache.get(rowId); const entry = this.investigationLog.find(a => a.row_id === rowId); this.logCache.set(rowId, entry || null); return entry; }
@@ -989,12 +1196,24 @@
                 if (!classification) throw new Error("Please select a classification");
                 if (this.isRowInvestigated(this.selectedRowForInteraction["Row ID"])) throw new Error(`This row is already classified.`);
                 
-                let irevValue = parseFloat(document.getElementById('irev-value-input').value);
-                if (isNaN(irevValue) || irevValue < 0) irevValue = 0.00;
-                const formattedIrev = irevValue.toFixed(4);
+                const irevInput = document.getElementById('irev-value-input');
+                const validation = ValidationUtils.validateIrevValue(irevInput.value);
                 
-                const confirmed = await UIHelpers.showConfirmationDialog({ title: 'Are you sure you want to classify this anomaly?', path: this.selectedRowForInteraction.Path, classification, irev: formattedIrev, weeks: [this.selectedRowForInteraction.Week], affectedRows: 1, confirmText: 'Yes, Submit Anomaly Type' });
-                if (confirmed) await this.saveInvestigation(this.selectedRowForInteraction, classification, formattedIrev);
+                if (!validation.valid) {
+                    ValidationUtils.showFieldError('irev-value-input', validation.error);
+                    throw new Error(validation.error);
+                }
+                
+                const confirmed = await UIHelpers.showConfirmationDialog({ 
+                    title: 'Are you sure you want to classify this anomaly?', 
+                    path: this.selectedRowForInteraction.Path, 
+                    classification, 
+                    irev: validation.value, 
+                    weeks: [this.selectedRowForInteraction.Week], 
+                    affectedRows: 1, 
+                    confirmText: 'Yes, Submit Anomaly Type' 
+                });
+                if (confirmed) await this.saveInvestigation(this.selectedRowForInteraction, classification, validation.value);
             } catch (error) { UIHelpers.showToast(error.message, 'error'); }
         }
 
@@ -1005,16 +1224,28 @@
                 if (!logEntry) throw new Error("This row must be investigated before it can be closed.");
 
                 const team = document.getElementById('team-responsible-select').value;
-                const dateElement = document.getElementById('resolution-date-input');
-                const date = dateElement.value;
+                const dateInput = document.getElementById('resolution-date-input');
+                const date = dateInput.value;
+                
                 if (!team) throw new Error("Please select the team responsible.");
                 if (!date) throw new Error("Please enter the date of resolution.");
 
-                if (!this.validateResolutionYear(dateElement)) {
-                    throw new Error("Invalid year in Resolution Date. Please enter a 4-digit year.");
+                const dateValidation = ValidationUtils.validateResolutionDate(date);
+                if (!dateValidation.valid) {
+                    ValidationUtils.showFieldError('resolution-date-input', dateValidation.error);
+                    throw new Error(dateValidation.error);
                 }
 
-                const confirmed = await UIHelpers.showConfirmationDialog({ title: 'Are you sure you want to close this case?', path: this.selectedRowForInteraction.Path, classification: logEntry.classification, weeks: [this.selectedRowForInteraction.Week], affectedRows: 1, teamResponsible: team, resolutionDate: date, confirmText: 'Yes, Close Case' });
+                const confirmed = await UIHelpers.showConfirmationDialog({ 
+                    title: 'Are you sure you want to close this case?', 
+                    path: this.selectedRowForInteraction.Path, 
+                    classification: logEntry.classification, 
+                    weeks: [this.selectedRowForInteraction.Week], 
+                    affectedRows: 1, 
+                    teamResponsible: team, 
+                    resolutionDate: date, 
+                    confirmText: 'Yes, Close Case' 
+                });
                 if (confirmed) await this.saveResolution(logEntry, team, date);
             } catch (error) { UIHelpers.showToast(error.message, 'error'); }
         }
@@ -1022,7 +1253,17 @@
         async saveInvestigation(row, classification, irevValue) {
             UIHelpers.showLoading('Saving classification...');
             try {
-                const logEntry = { row_id: row["Row ID"], week: row.Week, path: row.Path, classification, irev_value: irevValue, investigation_timestamp: formatTimestamp(new Date()), team_responsible: null, resolution_date: null, resolution_timestamp: null };
+                const logEntry = { 
+                    row_id: row["Row ID"], 
+                    week: row.Week, 
+                    path: row.Path, 
+                    classification, 
+                    irev_value: irevValue, 
+                    investigation_timestamp: formatTimestamp(new Date()), 
+                    team_responsible: null, 
+                    resolution_date: null, 
+                    resolution_timestamp: null 
+                };
                 this.investigationLog.push(logEntry);
                 this.logCache.set(row["Row ID"], logEntry);
                 this.updateLogView();
@@ -1063,9 +1304,9 @@
             }
             
             let html = `
-                <div class="d-flex justify-content-between">
-                    <button class="btn btn-secondary btn-sm mb-3" onclick="app.goBackToExplorer()">← Back to Anomaly Inventory</button>
-                    <button class="btn btn-primary btn-sm mb-3" onclick="app.goBackToExplorer()">🏠 Home Page</button>
+                <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+                    <button class="btn btn-secondary btn-sm" onclick="app.goBackToExplorer()">← Back to Anomaly Inventory</button>
+                    <button class="btn btn-primary btn-sm" onclick="app.goBackToExplorer()">🏠 Home Page</button>
                 </div>
                 <h3 class="mb-3">Illustrative Cases for Row ID: <span class="text-primary fw-bold">${escapeHtml(rowData["Row ID"])}</span></h3>
                 <div class="info-box">💡 Click any <strong>Visitor ID</strong> to view session analysis.</div>
@@ -1085,7 +1326,7 @@
             if (!head || !body) return;
             head.innerHTML = `<tr>${CONFIG.LOG_DISPLAY_COLUMNS.map(h => `<th scope="col">${escapeHtml(h)}</th>`).join('')}</tr>`;
             const sortedLog = [...this.investigationLog].sort((a, b) => new Date(b.investigation_timestamp) - new Date(a.investigation_timestamp));
-            body.innerHTML = sortedLog.map(log => `<tr><td>${escapeHtml(log.row_id)}</td><td>${escapeHtml(log.week)}</td><td><span class="path-badge">${escapeHtml(log.path)}</span></td><td>${escapeHtml(log.classification)}</td><td>$${parseFloat(log.irev_value).toFixed(2)}</td><td>${escapeHtml(log.investigation_timestamp)}</td><td>${escapeHtml(log.team_responsible || '-')}</td><td>${escapeHtml(log.resolution_date || '-')}</td><td>${escapeHtml(log.resolution_timestamp || '-')}</td></tr>`).join('');
+            body.innerHTML = sortedLog.map(log => `<tr><td>${escapeHtml(log.row_id)}</td><td>${escapeHtml(log.week)}</td><td><span class="path-badge">${escapeHtml(log.path)}</span></td><td>${escapeHtml(log.classification)}</td><td>${parseFloat(log.irev_value).toFixed(2)}</td><td>${escapeHtml(log.investigation_timestamp)}</td><td>${escapeHtml(log.team_responsible || '-')}</td><td>${escapeHtml(log.resolution_date || '-')}</td><td>${escapeHtml(log.resolution_timestamp || '-')}</td></tr>`).join('');
         }
         
         populateBatchClassificationDropdown() {
@@ -1096,18 +1337,21 @@
         renderAnalytics() {
             const container = document.getElementById('analytics-content');
             if (this.investigationLog.length === 0) { container.innerHTML = `<div class="text-center p-5"><p class="text-muted">No classification data available.</p></div>`; return; }
-            container.innerHTML = `<div class="row g-4">
-                <div class="col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Classification Counts</h5><div class="chart-container"><canvas id="pie-chart"></canvas></div></div></div></div>
-                <div class="col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Classifications by Path</h5><div class="chart-container"><canvas id="bar-chart-path"></canvas></div></div></div></div>
-                <div class="col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Total iREV by Team (US/India)</h5><div class="chart-container"><canvas id="bar-chart-irev-team"></canvas></div></div></div></div>
-                <div class="col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Total iREV by Responsible Team</h5><div class="chart-container"><canvas id="bar-chart-irev-responsible"></canvas></div></div></div></div>
+            
+            const totalIrev = this.investigationLog.reduce((s, l) => s + parseFloat(l.irev_value), 0);
+            
+            container.innerHTML = `<div class="row g-3 g-md-4">
+                <div class="col-12 col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Classification Counts</h5><div class="chart-container"><canvas id="pie-chart"></canvas></div></div></div></div>
+                <div class="col-12 col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Classifications by Path</h5><div class="chart-container"><canvas id="bar-chart-path"></canvas></div></div></div></div>
+                <div class="col-12 col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Total iREV by Team (US/India)</h5><div class="chart-container"><canvas id="bar-chart-irev-team"></canvas></div></div></div></div>
+                <div class="col-12 col-lg-6"><div class="card h-100"><div class="card-body"><h5 class="card-title">Total iREV by Responsible Team</h5><div class="chart-container"><canvas id="bar-chart-irev-responsible"></canvas></div></div></div></div>
             </div>
-            <div class="card mt-4"><div class="card-body"><h5 class="card-title">Summary Statistics</h5><div class="row text-center">
-                <div class="col"><h3 class="text-primary">${this.investigationLog.length}</h3><p class="text-muted">Total Classified</p></div>
-                <div class="col"><h3 class="text-primary">${this.investigationLog.filter(l => l.resolution_date).length}</h3><p class="text-muted">Total Closed</p></div>
-                <div class="col"><h3 class="text-success">${new Set(this.investigationLog.map(l => l.path)).size}</h3><p class="text-muted">Unique Paths</p></div>
-                <div class="col"><h3 class="text-warning">${new Set(this.investigationLog.map(l => l.classification)).size}</h3><p class="text-muted">Classifications Used</p></div>
-                <div class="col"><h3 class="text-info">$${this.investigationLog.reduce((s, l) => s + parseFloat(l.irev_value), 0).toFixed(2)}</h3><p class="text-muted">Total iREV</p></div>
+            <div class="card mt-3 mt-md-4"><div class="card-body"><h5 class="card-title">Summary Statistics</h5><div class="row text-center g-3">
+                <div class="col-6 col-md"><h3 class="text-primary">${this.investigationLog.length}</h3><p class="text-muted small">Total Classified</p></div>
+                <div class="col-6 col-md"><h3 class="text-primary">${this.investigationLog.filter(l => l.resolution_date).length}</h3><p class="text-muted small">Total Closed</p></div>
+                <div class="col-6 col-md"><h3 class="text-success">${new Set(this.investigationLog.map(l => l.path)).size}</h3><p class="text-muted small">Unique Paths</p></div>
+                <div class="col-6 col-md"><h3 class="text-warning">${new Set(this.investigationLog.map(l => l.classification)).size}</h3><p class="text-muted small">Classifications Used</p></div>
+                <div class="col-12 col-md"><h3 class="text-info">${totalIrev.toFixed(2)}</h3><p class="text-muted small">Total iREV</p></div>
             </div></div></div>`;
             this.renderCharts();
         }
@@ -1153,9 +1397,9 @@
             const visits = new Set(data.map(e => e["visitor no"])).size;
             
             let html = `
-                <div class="d-flex justify-content-between">
-                    <button class="btn btn-secondary btn-sm mb-3" onclick="app.goBackToIllustrativeCases()">← Back to Illustrative Cases</button>
-                    <button class="btn btn-primary btn-sm mb-3" onclick="app.goBackToExplorer()">🏠 Home Page</button>
+                <div class="d-flex justify-content-between flex-wrap gap-2 mb-3">
+                    <button class="btn btn-secondary btn-sm" onclick="app.goBackToIllustrativeCases()">← Back to Illustrative Cases</button>
+                    <button class="btn btn-primary btn-sm" onclick="app.goBackToExplorer()">🏠 Home Page</button>
                 </div>
                 <h3>Session Analysis: <span class="text-primary fw-bold">${escapeHtml(visitorId)}</span></h3>
                 <p class="text-muted">Showing ${pageViews} page views across ${visits} visit(s).</p>
